@@ -8,6 +8,7 @@ import (
 	"bitbucket.org/calmisland/go-server-configs/configs"
 	"bitbucket.org/calmisland/go-server-logs/errorreporter"
 	"bitbucket.org/calmisland/go-server-logs/errorreporter/slackreporter"
+	"bitbucket.org/calmisland/go-server-product/productdatabase/productdynamodb"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 )
@@ -19,6 +20,7 @@ func Setup() {
 	}
 
 	accountdynamodb.ActivateDatabase()
+	productdynamodb.ActivateDatabase()
 
 	setupAccessTokenSystems()
 	setupSlackReporter()
