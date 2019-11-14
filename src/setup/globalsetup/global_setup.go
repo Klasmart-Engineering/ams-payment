@@ -5,12 +5,17 @@ import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase/accountdynamodb"
 	"bitbucket.org/calmisland/go-server-aws/awsdynamodb"
 	"bitbucket.org/calmisland/go-server-configs/configs"
+	"bitbucket.org/calmisland/go-server-iap/receiptvalidator/appleappstorereceipts"
+	"bitbucket.org/calmisland/go-server-iap/receiptvalidator/googleplaystorereceipts"
 	"bitbucket.org/calmisland/go-server-logs/errorreporter"
 	"bitbucket.org/calmisland/go-server-logs/errorreporter/slackreporter"
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
+	"bitbucket.org/calmisland/go-server-product/passservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/productdatabase"
 	"bitbucket.org/calmisland/go-server-product/productdatabase/productdynamodb"
+	"bitbucket.org/calmisland/go-server-product/productservice"
+	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
@@ -25,6 +30,8 @@ func Setup() {
 	setupServices(accountDatabase, productDatabase)
 
 	setupAccessTokenSystems()
+	setupGooglePlayReceiptValidator()
+	setupAppleStoreReceiptValidator()
 
 	globals.Verify()
 }
@@ -85,9 +92,24 @@ func setupServices(accountDatabase accountdatabase.Database, productDatabase pro
 		ProductAccessService: productAccessService,
 	}
 
+	passService := &passservice.StandardPassService{
+		ProductDatabase: productDatabase,
+	}
+
+	productService := &productservice.StandardProductService{
+		ProductDatabase: productDatabase,
+	}
+
+	storeProductService := &storeproductservice.StandardStoreProductService{
+		ProductDatabase: productDatabase,
+	}
+
 	globals.ProductAccessService = productAccessService
 	globals.PassAccessService = passAccessService
 	globals.TransactionService = transactionService
+	globals.PassService = passService
+	globals.ProductService = productService
+	globals.StoreProductService = storeProductService
 }
 
 func setupAccessTokenSystems() {
@@ -100,6 +122,40 @@ func setupAccessTokenSystems() {
 	globals.AccessTokenValidator, err = accesstokens.NewValidator(validatorConfig)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func setupGooglePlayReceiptValidator() {
+	var googlePlayValidatorConfig googleplaystorereceipts.ReceiptValidatorConfig
+	err := configs.LoadConfig("googleplay_receipt_validator", &googlePlayValidatorConfig, false)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(googlePlayValidatorConfig.JSONKey) > 0 || len(googlePlayValidatorConfig.JSONKeyFile) > 0 {
+		globals.GooglePlayReceiptValidator, err = googleplaystorereceipts.NewReceiptValidator(googlePlayValidatorConfig)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		globals.GooglePlayReceiptValidator = nil
+	}
+}
+
+func setupAppleStoreReceiptValidator() {
+	var appleStoreValidatorConfig appleappstorereceipts.ReceiptValidatorConfig
+	err := configs.LoadConfig("applestore_receipt_validator", &appleStoreValidatorConfig, false)
+	if err != nil {
+		panic(err)
+	}
+
+	if len(appleStoreValidatorConfig.Password) > 0 {
+		globals.AppleAppStoreReceiptValidator, err = appleappstorereceipts.NewReceiptValidator(appleStoreValidatorConfig)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		globals.AppleAppStoreReceiptValidator = nil
 	}
 }
 
