@@ -13,6 +13,9 @@ import (
 
 const transactionSeparator = "_"
 
+// TransactionService TransactionService
+var TransactionService ITransactionService
+
 type ITransactionService interface {
 	GetTransaction(accountID string, transactionCode *TransactionCode) (*Transaction, error)
 	GetTransactionByTransactionCode(transactionCode *TransactionCode) (*Transaction, error)
@@ -48,10 +51,8 @@ type TransactionItem struct {
 type TransactionStandardService struct {
 }
 
-var transactionService *TransactionStandardService
-
 func init() {
-	transactionService = &TransactionStandardService{}
+	TransactionService = &TransactionStandardService{}
 }
 
 // GetTransaction return the transaction information based on an account and the associated receipt
