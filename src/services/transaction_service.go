@@ -17,11 +17,22 @@ const transactionSeparator = "_"
 var TransactionService ITransactionService
 
 type ITransactionService interface {
+	// GetTransaction return the transaction information based on an account and the associated receipt
 	GetTransaction(accountID string, transactionCode *TransactionCode) (*Transaction, error)
+
+	// GetTransactionByReceipt return the transaction information based on a receipt
 	GetTransactionByTransactionCode(transactionCode *TransactionCode) (*Transaction, error)
-	SaveTransactionPasses(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error
-	SaveTransactionProducts(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error
+
+	// SaveTransactionUnlockPasses save the transaction as pendingSettlement and add the associated passes accesses
+	SaveTransactionUnlockPasses(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error
+
+	// SaveTransactionUnlockProducts save the transaction as pendingSettlement and add the associated products accesses
+	SaveTransactionUnlockProducts(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error
+
+	// SettleTransactionByReceipt updates the transaction to settled
 	SettleTransactionByTransactionCode(transactionCode *TransactionCode) error
+
+	// ReverseTransactionByReceipt updates the transaction to reversed and remove transaction related accesses
 	ReverseTransactionByTransactionCode(transactionCode *TransactionCode) error
 }
 
@@ -89,8 +100,8 @@ func (transactionService *TransactionStandardService) GetTransactionByTransactio
 	return convertAccountTransactionInfoToTransaction(accTransactionInfo), nil
 }
 
-// SaveTransactionPasses save the transaction as pendingSettlement and add the associated passes accesses
-func (transactionService *TransactionStandardService) SaveTransactionPasses(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error {
+// SaveTransactionUnlockPasses save the transaction as pendingSettlement and add the associated passes accesses
+func (transactionService *TransactionStandardService) SaveTransactionUnlockPasses(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error {
 	accountDB, err := accountdatabase.GetDatabase()
 	if err != nil {
 		return err
@@ -145,8 +156,8 @@ func (transactionService *TransactionStandardService) SaveTransactionPasses(acco
 	return passaccessservice.PassAccessService.CreateOrUpdatePassAccessVOList(passAccessVOList)
 }
 
-// SaveTransactionProducts save the transaction as pendingSettlement and add the associated products accesses
-func (transactionService *TransactionStandardService) SaveTransactionProducts(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error {
+// SaveTransactionUnlockProducts save the transaction as pendingSettlement and add the associated products accesses
+func (transactionService *TransactionStandardService) SaveTransactionUnlockProducts(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error {
 	accountDB, err := accountdatabase.GetDatabase()
 	if err != nil {
 		return err
