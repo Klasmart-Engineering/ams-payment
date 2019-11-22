@@ -261,7 +261,7 @@ func (transactionService *TransactionStandardService) ReverseTransactionByTransa
 
 	// Delete the passes accesses provided by the transaction, if any
 	if len(accTransactionInfo.Passes) > 0 {
-		var passIDs []string
+		passIDs := make([]string, 0, len(accTransactionInfo.Passes))
 		for passID, _ := range accTransactionInfo.Passes {
 			passIDs = append(passIDs, passID)
 		}
@@ -273,7 +273,7 @@ func (transactionService *TransactionStandardService) ReverseTransactionByTransa
 
 	// Delete the products accesses provided by the transaction, if any
 	if len(accTransactionInfo.Products) > 0 {
-		var productIDs []string
+		productIDs := make([]string, 0, len(accTransactionInfo.Products))
 		for productID, _ := range accTransactionInfo.Products {
 			productIDs = append(productIDs, productID)
 		}
@@ -321,7 +321,7 @@ func convertItemMapToTransactionItem(itemMap map[string]*accountdatabase.Account
 }
 
 func convertTransactionItemListToItemMap(items []*TransactionItem) map[string]*accountdatabase.AccountTransactionItem {
-	var itemMap map[string]*accountdatabase.AccountTransactionItem
+	itemMap := make(map[string]*accountdatabase.AccountTransactionItem)
 	for _, item := range items {
 		itemMap[item.ItemID] = &accountdatabase.AccountTransactionItem{
 			StartDate:      item.StartDate,
