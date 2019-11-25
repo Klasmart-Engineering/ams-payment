@@ -5,10 +5,9 @@ package main
 import (
 	"context"
 
-	"bitbucket.org/calmisland/go-server-account/accountdatabase"
-
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 )
 
 func initLambdaDevFunctions() {
@@ -18,13 +17,7 @@ func initLambdaDevFunctions() {
 }
 
 func createTablesRequest(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
-	// Get the database
-	db, err := accountdatabase.GetDatabase()
-	if err != nil {
-		return resp.SetServerError(err)
-	}
-
-	err = db.CreateDatabaseTables()
+	err := globals.AccountDatabase.CreateDatabaseTables()
 	if err != nil {
 		return resp.SetServerError(err)
 	}

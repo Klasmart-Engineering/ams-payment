@@ -8,6 +8,8 @@ import (
 	"bitbucket.org/calmisland/go-server-configs/configs"
 	"bitbucket.org/calmisland/go-server-logs/errorreporter"
 	"bitbucket.org/calmisland/go-server-logs/errorreporter/slackreporter"
+	"bitbucket.org/calmisland/go-server-product/passaccessservice"
+	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/productdatabase/productdynamodb"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
@@ -15,15 +17,54 @@ import (
 
 // Setup setup the server based on configuration
 func Setup() {
-	if err := awsdynamodb.InitializeFromConfigs(); err != nil {
-		panic(err)
-	}
-
-	accountdynamodb.ActivateDatabase()
-	productdynamodb.ActivateDatabase()
+	setupAccountDatabase()
+	setupProductAndPassAccessService()
 
 	setupAccessTokenSystems()
 	setupSlackReporter()
+}
+
+func setupAccountDatabase() {
+	var accountDatabaseConfig awsdynamodb.ClientConfig
+	err := configs.LoadConfig("account_database_dynamodb", &accountDatabaseConfig, true)
+	if err != nil {
+		panic(err)
+	}
+
+	ddbClient, err := awsdynamodb.NewClient(&accountDatabaseConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	globals.AccountDatabase, err = accountdynamodb.New(ddbClient)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func setupProductAndPassAccessService() {
+	var productDatabaseConfig awsdynamodb.ClientConfig
+	err := configs.LoadConfig("product_database_dynamodb", &productDatabaseConfig, true)
+	if err != nil {
+		panic(err)
+	}
+
+	ddbClient, err := awsdynamodb.NewClient(&productDatabaseConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	productDatabase, err := productdynamodb.New(ddbClient)
+	if err != nil {
+		panic(err)
+	}
+
+	globals.ProductAccessService = &productaccessservice.StandardProductAccessService{
+		ProductDatabase: productDatabase,
+	}
+	globals.PassAccessService = &passaccessservice.StandardPassAccessService{
+		ProductDatabase: productDatabase,
+	}
 }
 
 func setupAccessTokenSystems() {
