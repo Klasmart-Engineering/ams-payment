@@ -1,5 +1,3 @@
-// +build !china
-
 package globalsetup
 
 import (
