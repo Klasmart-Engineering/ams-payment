@@ -30,10 +30,19 @@ func Verify() {
 	if AccessTokenValidator == nil {
 		panic(errors.New("The access token validator has not been set"))
 	}
+	if AccountDatabase == nil {
+		panic(errors.New("The account database has not been set"))
+	}
+	if ProductDatabase == nil {
+		panic(errors.New("The product database has not been set"))
+	}
 	if ProductAccessService == nil {
 		panic(errors.New("The product access service has not been set"))
 	}
 	if PassAccessService == nil {
 		panic(errors.New("The pass access service has not been set"))
+	}
+	if TransactionService == nil {
+		panic(errors.New("The transcation service has not been set"))
 	}
 }
