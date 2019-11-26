@@ -10,7 +10,7 @@ import (
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 )
 
-func initLambdaDevFunctions() {
+func initLambdaDevFunctions(rootRouter *apirouter.Router) {
 	devRouter := apirouter.NewRouter()
 	devRouter.AddMethodHandler("GET", "createtables", createTablesRequest)
 	rootRouter.AddRouter("dev", devRouter)

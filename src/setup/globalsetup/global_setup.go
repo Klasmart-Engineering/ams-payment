@@ -20,12 +20,13 @@ import (
 
 // Setup setup the server based on configuration
 func Setup() {
+	setupSlackReporter()
+
 	accountDatabase := setupAccountDatabase()
 	productDatabase := setupProductDatabase()
 	setupServices(accountDatabase, productDatabase)
 
 	setupAccessTokenSystems()
-	setupSlackReporter()
 
 	globals.Verify()
 }
@@ -42,13 +43,13 @@ func setupAccountDatabase() accountdatabase.Database {
 		panic(err)
 	}
 
-	AccountDatabase, err := accountdynamodb.New(ddbClient)
+	accountDatabase, err := accountdynamodb.New(ddbClient)
 	if err != nil {
 		panic(err)
 	}
 
-	globals.AccountDatabase = AccountDatabase
-	return AccountDatabase
+	globals.AccountDatabase = accountDatabase
+	return accountDatabase
 }
 
 func setupProductDatabase() *productdynamodb.Database {
