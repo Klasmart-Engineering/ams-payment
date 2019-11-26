@@ -1,20 +1,25 @@
-package main
+package handlers
 
 import (
 	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/handlers"
 )
 
 var (
 	rootRouter *apirouter.Router
 )
 
-func initLambdaFunctions() {
+// InitializeRoutes initializes the routes.
+func InitializeRoutes() *apirouter.Router {
+	if rootRouter != nil {
+		return rootRouter
+	}
+
 	rootRouter = apirouter.NewRouter()
 	routerV1 := createLambdaRouterV1()
 	rootRouter.AddRouter("v1", routerV1)
+	return rootRouter
 }
 
 func createLambdaRouterV1() *apirouter.Router {
@@ -23,7 +28,7 @@ func createLambdaRouterV1() *apirouter.Router {
 	router := apirouter.NewRouter()
 	router.AddMiddleware(authMiddleware) // Validates the user session
 
-	router.AddMethodHandler("GET", "serverinfo", handlers.HandleServerInfo)
+	router.AddMethodHandler("GET", "serverinfo", HandleServerInfo)
 
 	return router
 }
