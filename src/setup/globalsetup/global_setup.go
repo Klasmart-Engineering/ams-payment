@@ -1,8 +1,9 @@
 // +build !china
 
-package server
+package globalsetup
 
 import (
+	"bitbucket.org/calmisland/go-server-account/accountdatabase"
 	"bitbucket.org/calmisland/go-server-account/accountdatabase/accountdynamodb"
 	"bitbucket.org/calmisland/go-server-aws/awsdynamodb"
 	"bitbucket.org/calmisland/go-server-configs/configs"
@@ -10,21 +11,26 @@ import (
 	"bitbucket.org/calmisland/go-server-logs/errorreporter/slackreporter"
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
+	"bitbucket.org/calmisland/go-server-product/productdatabase"
 	"bitbucket.org/calmisland/go-server-product/productdatabase/productdynamodb"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
 )
 
 // Setup setup the server based on configuration
 func Setup() {
-	setupAccountDatabase()
-	setupProductAndPassAccessService()
+	accountDatabase := setupAccountDatabase()
+	productDatabase := setupProductDatabase()
+	setupServices(accountDatabase, productDatabase)
 
 	setupAccessTokenSystems()
 	setupSlackReporter()
+
+	globals.Verify()
 }
 
-func setupAccountDatabase() {
+func setupAccountDatabase() accountdatabase.Database {
 	var accountDatabaseConfig awsdynamodb.ClientConfig
 	err := configs.LoadConfig("account_database_dynamodb", &accountDatabaseConfig, true)
 	if err != nil {
@@ -36,13 +42,16 @@ func setupAccountDatabase() {
 		panic(err)
 	}
 
-	globals.AccountDatabase, err = accountdynamodb.New(ddbClient)
+	AccountDatabase, err := accountdynamodb.New(ddbClient)
 	if err != nil {
 		panic(err)
 	}
+
+	globals.AccountDatabase = AccountDatabase
+	return AccountDatabase
 }
 
-func setupProductAndPassAccessService() {
+func setupProductDatabase() *productdynamodb.Database {
 	var productDatabaseConfig awsdynamodb.ClientConfig
 	err := configs.LoadConfig("product_database_dynamodb", &productDatabaseConfig, true)
 	if err != nil {
@@ -59,12 +68,27 @@ func setupProductAndPassAccessService() {
 		panic(err)
 	}
 
-	globals.ProductAccessService = &productaccessservice.StandardProductAccessService{
+	globals.ProductDatabase = productDatabase
+	return productDatabase
+}
+
+func setupServices(accountDatabase accountdatabase.Database, productDatabase productdatabase.Database) {
+	productAccessService := &productaccessservice.StandardProductAccessService{
 		ProductDatabase: productDatabase,
 	}
-	globals.PassAccessService = &passaccessservice.StandardPassAccessService{
+	passAccessService := &passaccessservice.StandardPassAccessService{
 		ProductDatabase: productDatabase,
 	}
+
+	transactionService := &services.TransactionStandardService{
+		AccountDatabase:      accountDatabase,
+		PassAccessService:    passAccessService,
+		ProductAccessService: productAccessService,
+	}
+
+	globals.ProductAccessService = productAccessService
+	globals.PassAccessService = passAccessService
+	globals.TransactionService = transactionService
 }
 
 func setupAccessTokenSystems() {

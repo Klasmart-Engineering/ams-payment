@@ -1,6 +1,0 @@
-{
-    "tables": {
-        "accountTable": "account",
-        "accountEmailTable": "email"
-    }
-}

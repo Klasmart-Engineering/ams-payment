@@ -1,7 +1,0 @@
-{
-    "tablePostfix": "alphabeta",
-    "tables": {
-        "accountTable": "account_alphabeta",
-        "accountEmailTable": "email_alphabeta"
-    }
-}

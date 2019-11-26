@@ -5,7 +5,7 @@ package main
 import (
 	"bitbucket.org/calmisland/go-server-configs/configs"
 	"bitbucket.org/calmisland/go-server-requests/apiservers/httpserver"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/server"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/setup/globalsetup"
 )
 
 func main() {
@@ -13,7 +13,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	server.Setup()
+	globalsetup.Setup()
 	initLambdaFunctions()
 	initLambdaDevFunctions()
 

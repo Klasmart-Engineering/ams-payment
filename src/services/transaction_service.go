@@ -9,13 +9,9 @@ import (
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 )
 
 const transactionSeparator = "_"
-
-// TransactionService TransactionService
-var TransactionService ITransactionService
 
 type ITransactionService interface {
 	// GetTransaction return the transaction information based on an account and the associated receipt
@@ -61,10 +57,9 @@ type TransactionItem struct {
 }
 
 type TransactionStandardService struct {
-}
-
-func init() {
-	TransactionService = &TransactionStandardService{}
+	AccountDatabase      accountdatabase.Database
+	PassAccessService    *passaccessservice.StandardPassAccessService
+	ProductAccessService *productaccessservice.StandardProductAccessService
 }
 
 // GetTransaction return the transaction information based on an account and the associated receipt
@@ -73,7 +68,7 @@ func (transactionService *TransactionStandardService) GetTransaction(accountID s
 	if err != nil {
 		return nil, err
 	}
-	accTransactionInfo, err := globals.AccountDatabase.GetAccountTransactionInfo(accountID, transactionID)
+	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfo(accountID, transactionID)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +81,7 @@ func (transactionService *TransactionStandardService) GetTransactionByTransactio
 	if err != nil {
 		return nil, err
 	}
-	accTransactionInfo, err := globals.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
+	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +94,7 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 	if err != nil {
 		return err
 	}
-	err = globals.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
+	err = transactionService.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
 		AccountID:     accountID,
 		TransactionID: transactionID,
 		Passes:        convertTransactionItemListToItemMap(items),
@@ -109,7 +104,7 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 		return err
 	}
 
-	existingPassAccessVOList, err := globals.PassAccessService.GetPassAccessVOListByAccountID(accountID)
+	existingPassAccessVOList, err := transactionService.PassAccessService.GetPassAccessVOListByAccountID(accountID)
 	if err != nil {
 		return err
 	}
@@ -142,7 +137,7 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 			ExpirationDate: expirationDate,
 		}
 	}
-	return globals.PassAccessService.CreateOrUpdatePassAccessVOList(passAccessVOList)
+	return transactionService.PassAccessService.CreateOrUpdatePassAccessVOList(passAccessVOList)
 }
 
 // SaveTransactionUnlockProducts save the transaction as pendingSettlement and add the associated products accesses
@@ -151,7 +146,7 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockProdu
 	if err != nil {
 		return err
 	}
-	err = globals.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
+	err = transactionService.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
 		AccountID:     accountID,
 		TransactionID: transactionID,
 		Products:      convertTransactionItemListToItemMap(items),
@@ -161,7 +156,7 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockProdu
 		return err
 	}
 
-	existingProductAccessVOList, err := globals.ProductAccessService.GetProductAccessVOListByAccountID(accountID)
+	existingProductAccessVOList, err := transactionService.ProductAccessService.GetProductAccessVOListByAccountID(accountID)
 	if err != nil {
 		return err
 	}
@@ -194,7 +189,7 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockProdu
 			ExpirationDate: expirationDate,
 		}
 	}
-	return globals.ProductAccessService.CreateOrUpdateProductAccessVOList(productAccessVOList)
+	return transactionService.ProductAccessService.CreateOrUpdateProductAccessVOList(productAccessVOList)
 }
 
 // SettleTransactionByReceipt updates the transaction to settled
@@ -203,11 +198,11 @@ func (transactionService *TransactionStandardService) SettleTransactionByTransac
 	if err != nil {
 		return err
 	}
-	accTransactionInfo, err := globals.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
+	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
 	if err != nil {
 		return err
 	}
-	return globals.AccountDatabase.UpdateAccountTransaction(&accountdatabase.UpdateAccountTransactionInfo{
+	return transactionService.AccountDatabase.UpdateAccountTransaction(&accountdatabase.UpdateAccountTransactionInfo{
 		AccountID:     accTransactionInfo.AccountID,
 		TransactionID: accTransactionInfo.TransactionID,
 		State:         transactions.Settled,
@@ -220,13 +215,13 @@ func (transactionService *TransactionStandardService) ReverseTransactionByTransa
 	if err != nil {
 		return err
 	}
-	accTransactionInfo, err := globals.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
+	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
 	if err != nil {
 		return err
 	}
 
 	// Update the state of the transaction
-	err = globals.AccountDatabase.UpdateAccountTransaction(&accountdatabase.UpdateAccountTransactionInfo{
+	err = transactionService.AccountDatabase.UpdateAccountTransaction(&accountdatabase.UpdateAccountTransactionInfo{
 		AccountID:        accTransactionInfo.AccountID,
 		TransactionID:    accTransactionInfo.TransactionID,
 		State:            transactions.Reversed,
@@ -242,7 +237,7 @@ func (transactionService *TransactionStandardService) ReverseTransactionByTransa
 		for passID, _ := range accTransactionInfo.Passes {
 			passIDs = append(passIDs, passID)
 		}
-		err = globals.PassAccessService.DeletePassAccesses(accTransactionInfo.AccountID, passIDs)
+		err = transactionService.PassAccessService.DeletePassAccesses(accTransactionInfo.AccountID, passIDs)
 		if err != nil {
 			return err
 		}
@@ -254,7 +249,7 @@ func (transactionService *TransactionStandardService) ReverseTransactionByTransa
 		for productID, _ := range accTransactionInfo.Products {
 			productIDs = append(productIDs, productID)
 		}
-		err = globals.ProductAccessService.DeleteProductAccesses(accTransactionInfo.AccountID, productIDs)
+		err = transactionService.ProductAccessService.DeleteProductAccesses(accTransactionInfo.AccountID, productIDs)
 		if err != nil {
 			return err
 		}

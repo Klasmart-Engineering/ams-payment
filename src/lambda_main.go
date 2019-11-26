@@ -5,7 +5,7 @@ package main
 import (
 	"bitbucket.org/calmisland/go-server-aws/awslambda"
 	"bitbucket.org/calmisland/go-server-configs/configs"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/server"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/setup/globalsetup"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 		panic(err)
 	}
 
-	server.Setup()
+	globalsetup.Setup()
 	initLambdaFunctions()
 
 	err = awslambda.StartAPIHandler(rootRouter)
