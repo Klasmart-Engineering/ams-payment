@@ -117,21 +117,23 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	storeProducts, err := globals.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
 	if err != nil {
 		return resp.SetServerError(err)
+	} else if len(storeProducts) == 0 {
+		return resp.SetClientError(apierrors.ErrorIAPProductNotForSale)
 	}
 
 	productType := storeproducts.StoreProductTypeDefault
 	transactionItems := make([]*services.TransactionItem, 0, len(storeProducts))
 
 	timeNow := timeutils.EpochMSNow()
-	for _, products := range storeProducts {
+	for _, product := range storeProducts {
 		if productType == storeproducts.StoreProductTypeDefault {
-			productType = products.Type
-		} else if productType != products.Type {
-			return resp.SetServerError(errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, products.Type, storeProductID))
+			productType = product.Type
+		} else if productType != product.Type {
+			return resp.SetServerError(errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID))
 		}
 
-		if products.Type == storeproducts.StoreProductTypePass {
-			passInfo, err := globals.PassService.GetPassVOByPassID(products.ItemID)
+		if product.Type == storeproducts.StoreProductTypePass {
+			passInfo, err := globals.PassService.GetPassVOByPassID(product.ItemID)
 			if err != nil {
 				return resp.SetServerError(err)
 			} else if passInfo == nil {
@@ -144,9 +146,9 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 				StartDate:      timeNow,
 				ExpirationDate: expirationDate,
 			})
-		} else if products.Type == storeproducts.StoreProductTypeProduct {
+		} else if product.Type == storeproducts.StoreProductTypeProduct {
 			transactionItems = append(transactionItems, &services.TransactionItem{
-				ItemID:    products.ItemID,
+				ItemID:    product.ItemID,
 				StartDate: timeNow,
 			})
 		}
