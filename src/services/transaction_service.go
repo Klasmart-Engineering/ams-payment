@@ -281,7 +281,7 @@ func computeNewExpirationTime(oldExpirationDate, newStartDate, newExpirationDate
 }
 
 func convertItemMapToTransactionItem(itemMap map[string]*accountdatabase.AccountTransactionItem) []*TransactionItem {
-	transactionItemList := make([]*TransactionItem, len(itemMap))
+	transactionItemList := make([]*TransactionItem, 0, len(itemMap))
 	for key, value := range itemMap {
 		transactionItemList = append(transactionItemList, &TransactionItem{
 			ItemID:         key,
