@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
@@ -9,6 +8,7 @@ import (
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
+	"github.com/calmisland/go-errors"
 )
 
 const transactionSeparator = "_"
@@ -68,10 +68,14 @@ func (transactionService *TransactionStandardService) GetTransaction(accountID s
 	if err != nil {
 		return nil, err
 	}
+
 	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfo(accountID, transactionID)
 	if err != nil {
 		return nil, err
+	} else if accTransactionInfo == nil {
+		return nil, nil
 	}
+
 	return convertAccountTransactionInfoToTransaction(accTransactionInfo), nil
 }
 
@@ -81,10 +85,14 @@ func (transactionService *TransactionStandardService) GetTransactionByTransactio
 	if err != nil {
 		return nil, err
 	}
+
 	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
 	if err != nil {
 		return nil, err
+	} else if accTransactionInfo == nil {
+		return nil, nil
 	}
+
 	return convertAccountTransactionInfoToTransaction(accTransactionInfo), nil
 }
 
@@ -198,10 +206,14 @@ func (transactionService *TransactionStandardService) SettleTransactionByTransac
 	if err != nil {
 		return err
 	}
+
 	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
 	if err != nil {
 		return err
+	} else if accTransactionInfo == nil {
+		return errors.Errorf("Failed to find transaction with ID: %s", transactionID)
 	}
+
 	return transactionService.AccountDatabase.UpdateAccountTransaction(&accountdatabase.UpdateAccountTransactionInfo{
 		AccountID:     accTransactionInfo.AccountID,
 		TransactionID: accTransactionInfo.TransactionID,
@@ -215,9 +227,12 @@ func (transactionService *TransactionStandardService) ReverseTransactionByTransa
 	if err != nil {
 		return err
 	}
+
 	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
 	if err != nil {
 		return err
+	} else if accTransactionInfo == nil {
+		return errors.Errorf("Failed to find transaction with ID: %s", transactionID)
 	}
 
 	// Update the state of the transaction
@@ -312,6 +327,10 @@ func convertAccountTransactionInfoListToTransactionList(accountTransactionInfoLi
 }
 
 func convertAccountTransactionInfoToTransaction(accTransactionInfo *accountdatabase.AccountTransactionInfo) *Transaction {
+	if accTransactionInfo == nil {
+		return nil
+	}
+
 	return &Transaction{
 		AccountID:        accTransactionInfo.AccountID,
 		TransactionID:    accTransactionInfo.TransactionID,
