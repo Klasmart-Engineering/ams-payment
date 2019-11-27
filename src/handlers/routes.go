@@ -30,5 +30,9 @@ func createLambdaRouterV1() *apirouter.Router {
 
 	router.AddMethodHandler("GET", "serverinfo", HandleServerInfo)
 
+	iapPaymentRouter := apirouter.NewRouter()
+	iapPaymentRouter.AddMethodHandler("POST", "receipt", HandleProcessReceipt)
+	router.AddRouter("iap", iapPaymentRouter)
+
 	return router
 }
