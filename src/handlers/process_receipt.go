@@ -79,7 +79,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 
 	validatedReceipt, err := receiptValidator.ValidateReceipt(ctx, receipt)
 	if err != nil {
-		if validationErr := err.(receiptvalidator.ValidationError); validationErr != nil {
+		if validationErr, isValidationError := err.(receiptvalidator.ValidationError); isValidationError && validationErr != nil {
 			switch validationErr.Code() {
 			case receiptvalidator.ErrorCodeInvalidFormat:
 				return resp.SetClientError(apierrors.ErrorIAPInvalidReceiptFormat)
