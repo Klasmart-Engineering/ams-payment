@@ -90,6 +90,8 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 			}
 		}
 		return resp.SetServerError(err)
+	} else if validatedReceipt == nil {
+		return resp.SetServerError(errors.Errorf("Received nil receipt after receipt validation for store: %s", storeID))
 	}
 
 	productPurchase := validatedReceipt.FindProductPurchaseWithTransactionID(transactionID)
