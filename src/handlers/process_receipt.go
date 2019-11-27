@@ -10,11 +10,17 @@ import (
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
-	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
 	"github.com/calmisland/go-errors"
+)
+
+const (
+	appleStoreID      = "apple"
+	googlePlayStoreID = "googlePlay"
+
+	oneDay = time.Hour * 24
 )
 
 type processReceiptRequestBody struct {
@@ -25,17 +31,16 @@ type processReceiptRequestBody struct {
 
 // IsReceiptToAppleStore -validate receipt from Apple Store
 func IsReceiptToAppleStore(platform string) bool {
-	return strings.EqualFold("apple", platform)
+	return strings.EqualFold(platform, appleStoreID)
 }
 
 // IsReceiptToGooglePlay -validate receipt from Google Store
 func IsReceiptToGooglePlay(platform string) bool {
-	return strings.EqualFold("googlePlay", platform)
+	return strings.EqualFold(platform, googlePlayStoreID)
 }
 
 // HandleProcessReceipt handles receipt process requests.
 func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
-
 	// Parse the request body
 	var reqBody processReceiptRequestBody
 	err := req.UnmarshalBody(&reqBody)
@@ -99,12 +104,6 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		return resp.SetClientError(apierrors.ErrorIAPReceiptTransactionNotFound)
 	}
 
-	// Sanitize the store store product ID
-	storeProductID := textutils.SanitizeString(productPurchase.ProductID)
-	if len(storeProductID) == 0 {
-		return resp.SetServerError(err)
-	}
-
 	// Validating transaction
 	transaction, err := globals.TransactionService.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
@@ -116,6 +115,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessed)
 	}
 
+	storeProductID := productPurchase.ProductID
 	storeProducts, err := globals.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
 	if err != nil {
 		return resp.SetServerError(err)
@@ -142,7 +142,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 				return resp.SetClientError(apierrors.ErrorItemNotFound)
 			}
 
-			expirationDate := timeNow.Add(time.Duration(passInfo.Duration) * (time.Hour * 24))
+			expirationDate := timeNow.Add(time.Duration(passInfo.Duration) * oneDay)
 			transactionItems = append(transactionItems, &services.TransactionItem{
 				ItemID:         passInfo.PassID,
 				StartDate:      timeNow,
