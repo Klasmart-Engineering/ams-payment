@@ -100,7 +100,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	}
 
 	productPurchase := validatedReceipt.FindProductPurchaseWithTransactionID(transactionID)
-	if productPurchase != nil {
+	if productPurchase == nil {
 		return resp.SetClientError(apierrors.ErrorIAPReceiptTransactionNotFound)
 	}
 
