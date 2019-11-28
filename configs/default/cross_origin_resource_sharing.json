@@ -1,0 +1,19 @@
+{
+    "allowAnyOrigin": true,
+    "allowedOrigins": [],
+    "allowedMethods": [
+        "GET",
+        "OPTIONS",
+        "POST"
+    ],
+    "allowCredentials": false,
+    "allowedHeaders": [
+        "Authorization",
+        "Accept",
+        "Accept-Encoding",
+        "Content-Type"
+    ],
+    "exposeAllHeaders": true,
+    "exposedHeaders": [],
+    "accessControlMaxAge": 7200
+}
