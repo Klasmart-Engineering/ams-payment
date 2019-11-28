@@ -1,0 +1,228 @@
+{
+    "openapi": "3.0.2",
+    "info": {
+        "title": "Payment API",
+        "version": "1.0",
+        "description": "The RESTful payment service."
+    },
+    "servers": [
+        {
+            "url": "https://prod.payment.badanamu.net/v1",
+            "description": "The production payment service."
+        },
+        {
+            "url": "https://prod-test.payment.badanamu.net/v1",
+            "description": "The test production payment service."
+        },
+        {
+            "url": "https://beta.payment.badanamu.net/v1",
+            "description": "The beta staging payment service."
+        },
+        {
+            "url": "https://payment.internal.badanamu.net/v1",
+            "description": "The in-house payment service."
+        }
+    ],
+    "components": {
+        "schemas": {
+            "APIError": {
+                "type": "object",
+                "description": "An API error.",
+                "required": ["errCode"],
+                "properties": {
+                    "errCode": {
+                        "type": "integer",
+                        "description": "The code of the error."
+                    },
+                    "errName": {
+                        "type": "string",
+                        "description": "The name of the error."
+                    },
+                    "errMessage": {
+                        "type": "string",
+                        "description": "The error message."
+                    },
+                    "errField": {
+                        "type": "string",
+                        "description": "The name of the field that generated the error."
+                    },
+                    "errValue": {
+                        "type": "integer",
+                        "description": "Any value associated with the error."
+                    },
+                    "errParams": {
+                        "type": "object",
+                        "description": "Any parameters associated with the error."
+                    }
+                }
+            }
+        },
+        "responses": {
+            "400BadRequest": {
+                "description": "An input query parameter, part of the URL or the request body is invalid.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/APIError"
+                        }
+                    }
+                }
+            },
+            "401Unauthorized": {
+                "description": "You are not authorized to perform an action or to access a resource. Make sure that you are using a valid access token.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/APIError"
+                        }
+                    }
+                }
+            },
+            "403Forbidden": {
+                "description": "You are forbidden to perform an action or to access a resource.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "CIT"
+            }
+        }
+    },
+    "paths": {
+        "/iap/receipt": {
+            "post": {
+                "operationId": "login",
+                "summary": "Login",
+                "description": "Login into an account using the password.",
+                "tags": ["auth"],
+                "requestBody": {
+                    "description": "The login request information.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["storeId","transactionId","receipt"],
+                                "properties": {
+                                    "storeId": {
+                                        "type": "string",
+                                        "description": "The store ID.",
+                                        "example": "apple",
+                                        "enum": [
+                                            "apple",
+                                            "googlePlay"
+                                        ]
+                                    },
+                                    "transactionId": {
+                                        "type": "string",
+                                        "description": "The transaction ID from the store purchase."
+                                    },
+                                    "receipt": {
+                                        "type": "string",
+                                        "description": "The receipt received for the store purchase."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successfully processed the IAP receipt."
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/serverinfo": {
+            "get": {
+                "operationId": "getServerInfo",
+                "summary": "Get Server Info",
+                "description": "Gets information about the server.",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "X-Calmid-Debug",
+                        "description": "Used to return debug information from the server.",
+                        "example": "enable",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "tags": ["auth"],
+                "responses": {
+                    "200": {
+                        "description": "Successfully returned the server information.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["region","stage"],
+                                    "properties": {
+                                        "region": {
+                                            "type": "string",
+                                            "description": "The region that the server is hosted in.",
+                                            "example": "oregon"
+                                        },
+                                        "stage": {
+                                            "type": "string",
+                                            "description": "The stage that the server is deployed in.",
+                                            "example": "prod"
+                                        },
+                                        "serviceName": {
+                                            "type": "string",
+                                            "description": "The name of the service.",
+                                            "example": "auth"
+                                        },
+                                        "buildDate": {
+                                            "type": "string",
+                                            "description": "The date the server process was built.",
+                                            "example": "2019-11-25 01:18:00 +KST"
+                                        },
+                                        "buildReleaseName": {
+                                            "type": "string",
+                                            "description": "The name of the build release for the server process.",
+                                            "example": "v1.0.0"
+                                        },
+                                        "gitBranch": {
+                                            "type": "string",
+                                            "description": "The name of the Git branch that built the server process.",
+                                            "example": "prod"
+                                        },
+                                        "gitCommitHash": {
+                                            "type": "string",
+                                            "description": "The Git commit hash that the server process was build from.",
+                                            "example": "a5845227cf7216d440d524f41b5e6b66d72deb8a"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
