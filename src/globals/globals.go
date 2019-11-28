@@ -9,12 +9,16 @@ import (
 	"bitbucket.org/calmisland/go-server-product/productdatabase"
 	"bitbucket.org/calmisland/go-server-product/productservice"
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
+	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
 	"github.com/calmisland/go-errors"
 )
 
 var (
+	// CORSOptions are the CORS options to use for the API.
+	CORSOptions *apirouter.CORSOptions
+
 	// AccessTokenValidator is the access token validator
 	AccessTokenValidator accesstokens.Validator
 	// AccountDatabase is the account database.
