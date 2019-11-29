@@ -117,11 +117,11 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		return resp.SetServerError(err)
 	} else if transaction != nil {
 		if transaction.AccountID == accountID {
-			logger.LogFormat("[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] has already been processed by the same account.", transactionID, storeID)
+			logger.LogFormat("[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] has already been processed by the same account [%s].", transactionID, storeID, accountID)
 			return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
 		}
 
-		logger.LogFormat("[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] has already been processed by another account.", transactionID, storeID)
+		logger.LogFormat("[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] requested for account [%s] has already been processed by another account [%s].", transactionID, storeID, accountID, transaction.AccountID)
 		return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessed)
 	}
 
@@ -179,6 +179,6 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		}
 	}
 
-	logger.LogFormat("[IAPPROCESSRECEIPT] Successfully processed transaction [%s] for store [%s] and store product [%s].", transactionID, storeID, storeProductID)
+	logger.LogFormat("[IAPPROCESSRECEIPT] Successfully processed transaction [%s] for store [%s], store product [%s] and account [%s].", transactionID, storeID, storeProductID, accountID)
 	return nil
 }
