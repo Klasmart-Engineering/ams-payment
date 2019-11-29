@@ -7,9 +7,11 @@ import (
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator"
+	"bitbucket.org/calmisland/go-server-logs/logger"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
+	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
@@ -48,9 +50,9 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 
-	transactionID := reqBody.TransactionID
-	storeID := reqBody.StoreID
-	receipt := reqBody.Receipt
+	transactionID := textutils.SanitizeString(reqBody.TransactionID)
+	storeID := textutils.SanitizeString(reqBody.StoreID)
+	receipt := textutils.SanitizeMultiLineString(reqBody.Receipt)
 
 	// Validate Input parameters
 	if len(transactionID) == 0 {
@@ -79,6 +81,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 
 	// If no receipt validator is available
 	if receiptValidator == nil {
+		logger.LogFormat("[IAPPROCESSRECEIPT] There is no receipt validator for [%s], so the service is currently unavailable.", storeID)
 		return resp.SetClientError(apierrors.ErrorIAPServiceUnavailable)
 	}
 
@@ -87,10 +90,13 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		if validationErr, isValidationError := err.(receiptvalidator.ValidationError); isValidationError && validationErr != nil {
 			switch validationErr.Code() {
 			case receiptvalidator.ErrorCodeInvalidFormat:
+				logger.LogFormat("[IAPPROCESSRECEIPT] Received a receipt with invalid format for store [%s] and transaction [%s]", storeID, transactionID)
 				return resp.SetClientError(apierrors.ErrorIAPInvalidReceiptFormat)
 			case receiptvalidator.ErrorCodeInvalidReceipt:
+				logger.LogFormat("[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [%s] and transaction [%s]", storeID, transactionID)
 				return resp.SetClientError(apierrors.ErrorIAPReceiptUnauthorized)
 			case receiptvalidator.ErrorCodeNetworkError, receiptvalidator.ErrorCodeServerUnavailable:
+				logger.LogFormat("[IAPPROCESSRECEIPT] The store [%s] is currently unavailable.", storeID)
 				return resp.SetClientError(apierrors.ErrorIAPServiceUnavailable)
 			}
 		}
@@ -101,6 +107,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 
 	productPurchase := validatedReceipt.FindProductPurchaseWithTransactionID(transactionID)
 	if productPurchase == nil {
+		logger.LogFormat("[IAPPROCESSRECEIPT] Unable to find transaction [%s] in receipt for store [%s]", transactionID, storeID)
 		return resp.SetClientError(apierrors.ErrorIAPReceiptTransactionNotFound)
 	}
 
@@ -110,8 +117,11 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		return resp.SetServerError(err)
 	} else if transaction != nil {
 		if transaction.AccountID == accountID {
+			logger.LogFormat("[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] has already been processed by the same account.", transactionID, storeID)
 			return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
 		}
+
+		logger.LogFormat("[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] has already been processed by another account.", transactionID, storeID)
 		return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessed)
 	}
 
@@ -120,6 +130,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if len(storeProducts) == 0 {
+		logger.LogFormat("[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] and store product [%s] isn't available for sale.", transactionID, storeID, storeProductID)
 		return resp.SetClientError(apierrors.ErrorIAPProductNotForSale)
 	}
 
@@ -139,7 +150,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 			if err != nil {
 				return resp.SetServerError(err)
 			} else if passInfo == nil {
-				return resp.SetClientError(apierrors.ErrorItemNotFound)
+				return resp.SetServerError(errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
 			}
 
 			expirationDate := timeNow.Add(time.Duration(passInfo.Duration) * oneDay)
@@ -168,5 +179,6 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		}
 	}
 
+	logger.LogFormat("[IAPPROCESSRECEIPT] Successfully processed transaction [%s] for store [%s] and store product [%s].", transactionID, storeID, storeProductID)
 	return nil
 }
