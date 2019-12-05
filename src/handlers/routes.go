@@ -40,6 +40,11 @@ func createLambdaRouterV1() *apirouter.Router {
 	iapPaymentRouter.AddMethodHandler("POST", "receipt", HandleProcessReceipt)
 	router.AddRouter("iap", iapPaymentRouter)
 
+	braintreeRouter := apirouter.NewRouter()
+	braintreeRouter.AddMethodHandler("GET", "token", HandleBraintreeToken)
+	braintreeRouter.AddMethodHandler("POST", "payment", HandleBraintreePayment)
+	router.AddRouter("braintree", braintreeRouter)
+
 	paypalRouter := apirouter.NewRouter()
 	paypalRouter.AddMethodHandler("POST", "payment", HandlePayPalPayment)
 	router.AddRouter("paypal", paypalRouter)

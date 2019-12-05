@@ -30,6 +30,7 @@ func Setup() {
 	accountDatabase := setupAccountDatabase()
 	productDatabase := setupProductDatabase()
 	setupServices(accountDatabase, productDatabase)
+	setupBraintreePaymentLambda()
 	setupPaypalPaymentLambda()
 
 	setupAccessTokenSystems()
@@ -191,6 +192,20 @@ func setupSlackReporter() {
 	}
 
 	errorreporter.Active = reporter
+}
+
+func setupBraintreePaymentLambda() {
+	var braintreePaymentLambdaConfig awslambda.FunctionConfig
+	var err error
+	err = configs.LoadConfig("braintree_payment_func_lambda", &braintreePaymentLambdaConfig, true)
+	if err != nil {
+		panic(err)
+	}
+
+	globals.BraintreePaymentFunction, err = awslambda.NewFunction(&braintreePaymentLambdaConfig)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func setupPaypalPaymentLambda() {

@@ -24,6 +24,7 @@ func Setup() {
 	accountDatabase := setupAccountDatabase()
 	productDatabase := setupProductDatabase()
 	setupServices(accountDatabase, productDatabase)
+	setupBraintreePaymentLambda()
 	setupPaypalPaymentLambda()
 
 	setupAccessTokenSystems()
@@ -96,6 +97,15 @@ func setupGooglePlayReceiptValidator() {
 
 func setupAppleStoreReceiptValidator() {
 	globals.AppleAppStoreReceiptValidator = nil
+}
+
+func setupBraintreePaymentLambda() {
+	mockfn := cloudfunctionsmock.NewMockFunction()
+	mockfn.On("Invoke", mock.Anything).Return(&cloudfunctions.FunctionInvokeOutput{
+		Payload: []byte("{}"),
+		IsError: false,
+	}, nil)
+	globals.BraintreePaymentFunction = mockfn
 }
 
 func setupPaypalPaymentLambda() {

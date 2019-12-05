@@ -142,6 +142,112 @@
                 ]
             }
         },
+        "/braintree/token": {
+            "get": {
+                "operationId": "Get Payment token",
+                "summary": "Start a braintree payment",
+                "description": "Returns a token used by the client to connect to the braintree API and start payment.",
+                "tags": ["token", "braintree"],
+                "responses": {
+                    "200": {
+                        "description": "Successfully processed the payment",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["clientToken"],
+                                    "properties": {
+                                        "clientToken": {
+                                            "type": "string",
+                                            "description": "The nonce used to connect to the braintree API",
+                                            "example": "eyJ2ZXJzaW9uIjoyLCJhdXRob3JpemF0aW9uRmluZ2VycHJpbnQiOiJleUowZVhBaU9pSktWMVFpTENKaGJHY2lPaUpGVXpJMU5pSXNJbXRwWkNJNklqSXdNVGd3TkRJMk1UWXRjMkZ1WkdKdmVDSXNJbWx6Y3lJNklrRjFkR2g1SW4wLmV5SmxlSEFpT2pFMU56VXpOalV4T0RZc0ltcDBhU0k2SWprM05qUmtOamhsTFdFeU9Ua3RORGhsWmkxaU4ySTBMVE01TlRGallqRmhaalEwWlNJc0luTjFZaUk2SW0xbU9XWXlhemx4WjJkd05XTTFlSFFpTENKcGMzTWlPaUpCZFhSb2VTSXNJbTFsY21Ob1lXNTBJanA3SW5CMVlteHBZMTlwWkNJNkltMW1PV1l5YXpseFoyZHdOV00xZUhRaUxDSjJaWEpwWm5sZlkyRnlaRjlpZVY5a1pXWmhkV3gwSWpwbVlXeHpaWDBzSW5KcFoyaDBjeUk2V3lKdFlXNWhaMlZmZG1GMWJIUWlYU3dpYjNCMGFXOXVjeUk2ZTMxOS5hYi05R0tvWmE3UFNOTk9HVnl2VTA5emZLVkNHMEFteG1UQUU1MXlSNDhjMkdMM1llNmtaODdteG5IQUFCSE82VWxUV0FWSGUyMmI0TmFGZ3JwemtMQSIsImNvbmZpZ1VybCI6Imh0dHBzOi8vYXBpLnNhbmRib3guYnJhaW50cmVlZ2F0ZXdheS5jb206NDQzL21lcmNoYW50cy9tZjlmMms5cWdncDVjNXh0L2NsaWVudF9hcGkvdjEvY29uZmlndXJhdGlvbiIsImdyYXBoUUwiOnsidXJsIjoiaHR0cHM6Ly9wYXltZW50cy5zYW5kYm94LmJyYWludHJlZS1hcGkuY29tL2dyYXBocWwiLCJkYXRlIjoiMjAxOC0wNS0wOCJ9LCJjaGFsbGVuZ2VzIjpbXSwiZW52aXJvbm1lbnQiOiJzYW5kYm94IiwiY2xpZW50QXBpVXJsIjoiaHR0cHM6Ly9hcGkuc2FuZGJveC5icmFpbnRyZWVnYXRld2F5LmNvbTo0NDMvbWVyY2hhbnRzL21mOWYyazlxZ2dwNWM1eHQvY2xpZW50X2FwaSIsImFzc2V0c1VybCI6Imh0dHBzOi8vYXNzZXRzLmJyYWludHJlZWdhdGV3YXkuY29tIiwiYXV0aFVybCI6Imh0dHBzOi8vYXV0aC52ZW5tby5zYW5kYm94LmJyYWludHJlZWdhdGV3YXkuY29tIiwiYW5hbHl0aWNzIjp7InVybCI6Imh0dHBzOi8vb3JpZ2luLWFuYWx5dGljcy1zYW5kLnNhbmRib3guYnJhaW50cmVlLWFwaS5jb20vbWY5ZjJrOXFnZ3A1YzV4dCJ9LCJ0aHJlZURTZWN1cmVFbmFibGVkIjp0cnVlLCJwYXlwYWxFbmFibGVkIjp0cnVlLCJwYXlwYWwiOnsiZGlzcGxheU5hbWUiOiJDYWxtIElzbGFuZCIsImNsaWVudElkIjoiQVcyQVJWQkViNU5oVjRHWkhHWHJiYTNZTjU3bUlLMC1VaG5ab2MxSXhFNXBPMVBlSE1aZzF1Q1E3R1JKOEY0WS1mMlFsNl84YTlBYm1KLXIiLCJwcml2YWN5VXJsIjoiaHR0cDovL2V4YW1wbGUuY29tL3BwIiwidXNlckFncmVlbWVudFVybCI6Imh0dHA6Ly9leGFtcGxlLmNvbS90b3MiLCJiYXNlVXJsIjoiaHR0cHM6Ly9hc3NldHMuYnJhaW50cmVlZ2F0ZXdheS5jb20iLCJhc3NldHNVcmwiOiJodHRwczovL2NoZWNrb3V0LnBheXBhbC5jb20iLCJkaXJlY3RCYXNlVXJsIjpudWxsLCJhbGxvd0h0dHAiOnRydWUsImVudmlyb25tZW50Tm9OZXR3b3JrIjpmYWxzZSwiZW52aXJvbm1lbnQiOiJvZmZsaW5lIiwidW52ZXR0ZWRNZXJjaGFudCI6ZmFsc2UsImJyYWludHJlZUNsaWVudElkIjoibWFzdGVyY2xpZW50MyIsImJpbGxpbmdBZ3JlZW1lbnRzRW5hYmxlZCI6dHJ1ZSwibWVyY2hhbnRBY2NvdW50SWQiOiJjYWxtaXNsYW5kX3VzZCIsImN1cnJlbmN5SXNvQ29kZSI6IlVTRCJ9LCJtZXJjaGFudElkIjoibWY5ZjJrOXFnZ3A1YzV4dCIsInZlbm1vIjoib2ZmIn0="
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/braintree/payment": {
+            "post": {
+                "operationId": "braintree_payment",
+                "summary": "Complete a braintree payment",
+                "description": "Return a braintree payment nonce to the server so it can complete the payment.",
+                "tags": ["payment", "braintree"],
+                "requestBody": {
+                    "description": "The payment information.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["nonce","productCode"],
+                                "properties": {
+                                    "nonce": {
+                                        "type": "string",
+                                        "description": "The nonce provided by braintree after entering payment information",
+                                        "example": "h1vm6hn2"
+                                    },
+                                    "productCode": {
+                                        "type": "string",
+                                        "description": "The product being purchased from the store"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successfully processed the payment",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["transactionId"],
+                                    "properties": {
+                                        "transactionId": {
+                                            "type": "string",
+                                            "description": "The ID of the completed transaction",
+                                            "example": "h1vm6hn2"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/paypal/payment": {
             "post": {
                 "operationId": "paypal_payment",
