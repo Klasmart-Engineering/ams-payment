@@ -2,6 +2,7 @@ package globals
 
 import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
+	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator"
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
 	"bitbucket.org/calmisland/go-server-product/passservice"
@@ -41,6 +42,8 @@ var (
 	GooglePlayReceiptValidator receiptvalidator.Validator
 	// AppleAppStoreReceiptValidator is the apple store receipt validator
 	AppleAppStoreReceiptValidator receiptvalidator.Validator
+	// PayPalPaymentFunction is the lambda function that provides access to the paypal payment gateway
+	PayPalPaymentFunction cloudfunctions.Function
 )
 
 // Verify verifies if all variables have been properly set.
@@ -71,5 +74,8 @@ func Verify() {
 	}
 	if StoreProductService == nil {
 		panic(errors.New("The store product service has not been set"))
+	}
+	if PayPalPaymentFunction == nil {
+		panic(errors.New("The paypal payment function has not been set"))
 	}
 }

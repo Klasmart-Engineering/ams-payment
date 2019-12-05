@@ -31,12 +31,18 @@ func createLambdaRouterV1() *apirouter.Router {
 	authMiddleware := authmiddlewares.ValidateSession(globals.AccessTokenValidator, true)
 
 	router := apirouter.NewRouter()
+	router.AddMiddleware(authMiddleware) // Validates the user session
+
 	router.AddMethodHandler("GET", "serverinfo", standardhandlers.HandleServerInfo)
+	router.AddMethodHandler("GET", "history", HandleGetReceipts)
 
 	iapPaymentRouter := apirouter.NewRouter()
-	iapPaymentRouter.AddMiddleware(authMiddleware) // Validates the user session
 	iapPaymentRouter.AddMethodHandler("POST", "receipt", HandleProcessReceipt)
 	router.AddRouter("iap", iapPaymentRouter)
+
+	paypalRouter := apirouter.NewRouter()
+	paypalRouter.AddMethodHandler("POST", "payment", HandlePayPalPayment)
+	router.AddRouter("paypal", paypalRouter)
 
 	return router
 }

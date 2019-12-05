@@ -98,6 +98,114 @@
         }
     },
     "paths": {
+        "/history": {
+            "get": {
+                "operationId": "Get Transaction history",
+                "summary": "returns all of a user's prior transaction",
+                "description": "Returns a list of transactions",
+                "tags": ["transaction", "history"],
+                "responses": {
+                    "200": {
+                        "description": "Successfully fetched the transactions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["transactions"],
+                                    "properties": {
+                                        "transactions": {
+                                            "type": "array",
+                                            "description": "An array of transaction objects",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/paypal/payment": {
+            "post": {
+                "operationId": "paypal_payment",
+                "summary": "Complete a paypal payment",
+                "description": "Check that the user compelted the payment with the correct amount.",
+                "tags": ["payment", "paypal"],
+                "requestBody": {
+                    "description": "The payment information.",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["orderId","productCode"],
+                                "properties": {
+                                    "orderId": {
+                                        "type": "string",
+                                        "description": "The order provided by paypal",
+                                        "example": "h1vm6hn2"
+                                    },
+                                    "productCode": {
+                                        "type": "string",
+                                        "description": "The product being purchased from the store"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successfully processed the payment",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["success"],
+                                    "properties": {
+                                        "transactionId": {
+                                            "type": "boolean",
+                                            "description": "Whether the payment was successful",
+                                            "example": "true"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/iap/receipt": {
             "post": {
                 "operationId": "login",
@@ -220,8 +328,22 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/400BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403Forbidden"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         }
     }

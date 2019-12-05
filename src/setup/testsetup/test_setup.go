@@ -3,6 +3,8 @@ package testsetup
 import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
 	"bitbucket.org/calmisland/go-server-account/accountdatabase/accountmemorydb"
+	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
+	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions/cloudfunctionsmock"
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
 	"bitbucket.org/calmisland/go-server-product/passservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
@@ -22,6 +24,7 @@ func Setup() {
 	accountDatabase := setupAccountDatabase()
 	productDatabase := setupProductDatabase()
 	setupServices(accountDatabase, productDatabase)
+	setupPaypalPaymentLambda()
 
 	setupAccessTokenSystems()
 	setupGooglePlayReceiptValidator()
@@ -93,4 +96,13 @@ func setupGooglePlayReceiptValidator() {
 
 func setupAppleStoreReceiptValidator() {
 	globals.AppleAppStoreReceiptValidator = nil
+}
+
+func setupPaypalPaymentLambda() {
+	mockfn := cloudfunctionsmock.NewMockFunction()
+	mockfn.On("Invoke", mock.Anything).Return(&cloudfunctions.FunctionInvokeOutput{
+		Payload: []byte("{}"),
+		IsError: false,
+	}, nil)
+	globals.PayPalPaymentFunction = mockfn
 }

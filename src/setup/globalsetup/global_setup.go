@@ -4,6 +4,7 @@ import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
 	"bitbucket.org/calmisland/go-server-account/accountdatabase/accountdynamodb"
 	"bitbucket.org/calmisland/go-server-aws/awsdynamodb"
+	"bitbucket.org/calmisland/go-server-aws/awslambda"
 	"bitbucket.org/calmisland/go-server-configs/configs"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator/appleappstorereceipts"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator/googleplaystorereceipts"
@@ -29,6 +30,7 @@ func Setup() {
 	accountDatabase := setupAccountDatabase()
 	productDatabase := setupProductDatabase()
 	setupServices(accountDatabase, productDatabase)
+	setupPaypalPaymentLambda()
 
 	setupAccessTokenSystems()
 	setupGooglePlayReceiptValidator()
@@ -189,4 +191,18 @@ func setupSlackReporter() {
 	}
 
 	errorreporter.Active = reporter
+}
+
+func setupPaypalPaymentLambda() {
+	var paypalPaymentLambdaConfig awslambda.FunctionConfig
+	var err error
+	err = configs.LoadConfig("paypal_payment_func_lambda", &paypalPaymentLambdaConfig, true)
+	if err != nil {
+		panic(err)
+	}
+
+	globals.PayPalPaymentFunction, err = awslambda.NewFunction(&paypalPaymentLambdaConfig)
+	if err != nil {
+		panic(err)
+	}
 }
