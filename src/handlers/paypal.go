@@ -20,7 +20,7 @@ func purchasePermissions(accountID string, productCode string) (bool, error) {
 	switch productCode {
 	case "com.calmid.learnandplay.blp.standard":
 		//If the user has access to a premium pass, block purchase of a standard pass.
-		access, err := globals.PassAccessService.GetPassAccessVOByAccountIDPassID(accountID, "com.calmid.learnandplay.blap.premium")
+		access, err := globals.PassAccessService.GetPassAccessVOByAccountIDPassID(accountID, "com.calmid.learnandplay.blp.premium")
 		if err != nil {
 			return false, err
 		}
