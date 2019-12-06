@@ -17,6 +17,9 @@ type ITransactionService interface {
 	// GetTransaction return the transaction information based on an account and the associated receipt
 	GetTransaction(accountID string, transactionCode *TransactionCode) (*Transaction, error)
 
+	// GetTransactionHistory return the a list of transactions for an account
+	GetTransactionHistory(accountID string) ([]*Transaction, error)
+
 	// GetTransactionByReceipt return the transaction information based on a receipt
 	GetTransactionByTransactionCode(transactionCode *TransactionCode) (*Transaction, error)
 
@@ -77,6 +80,20 @@ func (transactionService *TransactionStandardService) GetTransaction(accountID s
 	}
 
 	return convertAccountTransactionInfoToTransaction(accTransactionInfo), nil
+}
+
+// GetTransaction return the transaction information based on an account and the associated receipt
+func (transactionService *TransactionStandardService) GetTransactionHistory(accountID string) ([]*Transaction, error) {
+	accountTransactions, err := transactionService.AccountDatabase.GetAccountTransactionHistory(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	transactionHistory := make([]*Transaction, 0, len(accountTransactions))
+	for _, accountTransaction := range accountTransactions {
+		transactionHistory = append(transactionHistory, convertAccountTransactionInfoToTransaction(accountTransaction))
+	}
+	return transactionHistory, nil
 }
 
 // GetTransactionByReceipt return the transaction information based on a receipt
@@ -274,7 +291,7 @@ func (transactionService *TransactionStandardService) ReverseTransactionByTransa
 
 func buildTransactionIDFromTransactionCode(transactionCode *TransactionCode) (string, error) {
 	switch transactionCode.Store {
-	case transactions.GooglePlay, transactions.Apple, transactions.BrainTree:
+	case transactions.GooglePlay, transactions.Apple, transactions.BrainTree, transactions.PayPal:
 		return fmt.Sprintf("%s%s%s", transactionCode.Store, transactionSeparator, transactionCode.ID), nil
 	default:
 		return "", errors.New("Unknown transaction store")
@@ -283,7 +300,7 @@ func buildTransactionIDFromTransactionCode(transactionCode *TransactionCode) (st
 
 func setExpirationDateByStore(store transactions.Store, expirationDate timeutils.EpochTimeMS) (timeutils.EpochTimeMS, error) {
 	switch store {
-	case transactions.GooglePlay, transactions.Apple, transactions.BrainTree:
+	case transactions.GooglePlay, transactions.Apple, transactions.BrainTree, transactions.PayPal:
 		return expirationDate, nil
 	default:
 		return 0, errors.New("Unknown transaction store")
