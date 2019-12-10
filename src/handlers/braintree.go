@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
@@ -69,12 +70,15 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 
-	item, price, err := getPriceFromProductCode(reqBody.ProductCode)
+	item := createTransactionItem(reqBody.ProductCode)
+	passVO, err := globals.PassService.GetPassVOByPassID(item.ItemID)
 	if err != nil {
+		return resp.SetServerError(err)
+	} else if passVO == nil {
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 
-	response, err := makeBraintreePayment(reqBody.Nonce, *price)
+	response, err := makeBraintreePayment(reqBody.Nonce, fmt.Sprint(passVO.Price))
 	if err != nil {
 		return resp.SetServerError(err)
 	}

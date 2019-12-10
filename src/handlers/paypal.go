@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
@@ -34,24 +35,6 @@ func purchasePermissions(accountID string, productCode string) (bool, error) {
 		fallthrough
 	default:
 		return true, nil
-	}
-}
-
-//In future passes will be defined in the database
-func getPriceFromProductCode(productCode string) (*services.TransactionItem, *string, error) {
-	item := createTransactionItem(productCode)
-	switch productCode {
-	case "com.calmid.learnandplay.blp.standard":
-		price := "20.00"
-		return item, &price, nil
-	case "com.calmid.learnandplay.blp.premium":
-		price := "50.00"
-		return item, &price, nil
-	case "com.calmid.badanamu.esl.premium":
-		price := "40.00"
-		return item, &price, nil
-	default:
-		return nil, nil, errors.New("Unknown Product")
 	}
 }
 
@@ -88,8 +71,11 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 
-	item, price, err := getPriceFromProductCode(reqBody.ProductCode)
+	item := createTransactionItem(reqBody.ProductCode)
+	passVO, err := globals.PassService.GetPassVOByPassID(item.ItemID)
 	if err != nil {
+		return resp.SetServerError(err)
+	} else if passVO == nil {
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 
@@ -97,7 +83,7 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	if err != nil {
 		return resp.SetServerError(err)
 	}
-	if !response.Success || *price != response.Value {
+	if !response.Success || fmt.Sprint(passVO.Price) != response.Value {
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 	transactionCode := services.TransactionCode{
