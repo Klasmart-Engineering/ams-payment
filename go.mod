@@ -11,6 +11,7 @@ require (
 	bitbucket.org/calmisland/go-server-configs v1.1.1
 	bitbucket.org/calmisland/go-server-iap v0.3.3
 	bitbucket.org/calmisland/go-server-logs v1.2.1
+	bitbucket.org/calmisland/go-server-messages v1.2.0
 	bitbucket.org/calmisland/go-server-product v1.9.0
 	bitbucket.org/calmisland/go-server-requests v1.14.1
 	bitbucket.org/calmisland/go-server-utils v1.9.0

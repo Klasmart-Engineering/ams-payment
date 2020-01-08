@@ -5,11 +5,13 @@ import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase/accountdynamodb"
 	"bitbucket.org/calmisland/go-server-aws/awsdynamodb"
 	"bitbucket.org/calmisland/go-server-aws/awslambda"
+	"bitbucket.org/calmisland/go-server-aws/awssqs"
 	"bitbucket.org/calmisland/go-server-configs/configs"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator/appleappstorereceipts"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator/googleplaystorereceipts"
 	"bitbucket.org/calmisland/go-server-logs/errorreporter"
 	"bitbucket.org/calmisland/go-server-logs/errorreporter/slackreporter"
+	"bitbucket.org/calmisland/go-server-messages/sendmessagequeue"
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
 	"bitbucket.org/calmisland/go-server-product/passservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
@@ -37,6 +39,8 @@ func Setup() {
 	setupGooglePlayReceiptValidator()
 	setupAppleStoreReceiptValidator()
 	setupCORS()
+
+	setupMessageQueue()
 
 	globals.Verify()
 }
@@ -217,6 +221,26 @@ func setupPaypalPaymentLambda() {
 	}
 
 	globals.PayPalPaymentFunction, err = awslambda.NewFunction(&paypalPaymentLambdaConfig)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func setupMessageQueue() {
+	var queueConfig awssqs.QueueConfig
+	err := configs.LoadConfig("message_send_sqs", &queueConfig, true)
+	if err != nil {
+		panic(err)
+	}
+
+	messageSendQueue, err := awssqs.NewQueue(queueConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	globals.MessageSendQueue, err = sendmessagequeue.New(sendmessagequeue.QueueConfig{
+		Queue: messageSendQueue,
+	})
 	if err != nil {
 		panic(err)
 	}
