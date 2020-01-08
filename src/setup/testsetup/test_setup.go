@@ -5,6 +5,7 @@ import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase/accountmemorydb"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions/cloudfunctionsmock"
+	"bitbucket.org/calmisland/go-server-messages/sendmessagequeue/sendmessagequeuemock"
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
 	"bitbucket.org/calmisland/go-server-product/passservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
@@ -30,6 +31,8 @@ func Setup() {
 	setupAccessTokenSystems()
 	setupGooglePlayReceiptValidator()
 	setupAppleStoreReceiptValidator()
+
+	setupMessageQueue()
 
 	globals.Verify()
 }
@@ -115,4 +118,10 @@ func setupPaypalPaymentLambda() {
 		IsError: false,
 	}, nil)
 	globals.PayPalPaymentFunction = mockfn
+}
+
+func setupMessageQueue() {
+	messageSendQueue := &sendmessagequeuemock.QueueMock{}
+	messageSendQueue.On("EnqueueMessage", mock.Anything).Return(nil)
+	globals.MessageSendQueue = messageSendQueue
 }

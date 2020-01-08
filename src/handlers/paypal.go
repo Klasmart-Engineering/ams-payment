@@ -9,6 +9,8 @@ import (
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
 	"bitbucket.org/calmisland/go-server-logs/logger"
+	"bitbucket.org/calmisland/go-server-messages/messages"
+	"bitbucket.org/calmisland/go-server-messages/messagetemplates"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
@@ -101,6 +103,27 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	}
 	items := []*services.TransactionItem{item}
 	err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, items)
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+
+	// Send an email once a pass is unlocked
+	accountInfo, err := globals.AccountDatabase.GetAccountInfo(accountID)
+	if err != nil {
+		return resp.SetServerError(err)
+	} else if accountInfo == nil {
+		return resp.SetClientError(apierrors.ErrorItemNotFound)
+	}
+	userEmail := accountInfo.Email
+	userLanguage := accountInfo.Language
+	emailMessage := &messages.Message{
+		MessageType: messages.MessageTypeEmail,
+		Priority:    messages.MessagePriorityEmailNormal,
+		Recipient:   userEmail,
+		Language:    userLanguage,
+		Template:    &messagetemplates.PassPurchasedTemplate{},
+	}
+	err = globals.MessageSendQueue.EnqueueMessage(emailMessage)
 	if err != nil {
 		return resp.SetServerError(err)
 	}
