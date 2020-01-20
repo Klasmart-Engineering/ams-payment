@@ -30,7 +30,7 @@ func purchasePermissions(accountID string, productCode string) (bool, error) {
 			return false, nil
 		}
 		return true, nil
-	case "com.calmid.learnandplay.blp.premium":
+	case "com.calmid.learnandplay.blp.premium", "com.calmid.badanamu.esl.premium":
 		fallthrough
 	default:
 		return true, nil
@@ -46,6 +46,9 @@ func getPriceFromProductCode(productCode string) (*services.TransactionItem, *st
 		return item, &price, nil
 	case "com.calmid.learnandplay.blp.premium":
 		price := "50.00"
+		return item, &price, nil
+	case "com.calmid.badanamu.esl.premium":
+		price := "40.00"
 		return item, &price, nil
 	default:
 		return nil, nil, errors.New("Unknown Product")
