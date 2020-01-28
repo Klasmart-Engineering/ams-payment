@@ -19,25 +19,6 @@ import (
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
 )
 
-func purchasePermissions(accountID string, productCode string) (bool, error) {
-	switch productCode {
-	case "com.calmid.learnandplay.blp.standard":
-		//If the user has access to a premium pass, block purchase of a standard pass.
-		access, err := globals.PassAccessService.GetPassAccessVOByAccountIDPassID(accountID, "com.calmid.learnandplay.blp.premium")
-		if err != nil {
-			return false, err
-		}
-		if access != nil {
-			return false, nil
-		}
-		return true, nil
-	case "com.calmid.learnandplay.blp.premium", "com.calmid.badanamu.esl.premium":
-		fallthrough
-	default:
-		return true, nil
-	}
-}
-
 func createTransactionItem(ItemID string) *services.TransactionItem {
 	now := timeutils.EpochMSNow()
 	const oneYear = 365 * 24 * time.Hour
@@ -62,14 +43,6 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	}
 
 	accountID := req.Session.Data.AccountID
-	allowed, err := purchasePermissions(accountID, reqBody.ProductCode)
-	if err != nil {
-		return resp.SetServerError(err)
-	}
-
-	if !allowed {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
-	}
 
 	item := createTransactionItem(reqBody.ProductCode)
 	passVO, err := globals.PassService.GetPassVOByPassID(item.ItemID)
@@ -79,11 +52,15 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 
+	passPrice, err := passVO.Price.ToString(passVO.Currency)
+	if err != nil {
+		return resp.SetServerError(err)
+	}
 	response, err := makePaypalPayment(reqBody.OrderID)
 	if err != nil {
 		return resp.SetServerError(err)
 	}
-	if !response.Success || fmt.Sprint(passVO.Price) != response.Value {
+	if !response.Success || passPrice != response.Value {
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 	transactionCode := services.TransactionCode{
@@ -103,6 +80,8 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	} else if accountInfo == nil {
 		return resp.SetClientError(apierrors.ErrorItemNotFound)
 	}
+	timeNow := timeutils.EpochMSNow()
+	endPassValidityDate := timeNow.Add(time.Duration(passVO.Duration))
 	userEmail := accountInfo.Email
 	userLanguage := accountInfo.Language
 	emailMessage := &messages.Message{
@@ -110,7 +89,10 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 		Priority:    messages.MessagePriorityEmailNormal,
 		Recipient:   userEmail,
 		Language:    userLanguage,
-		Template:    &messagetemplates.PassPurchasedTemplate{},
+		Template: &messagetemplates.PassPurchasedTemplate{
+			LearningPass:   passVO.Title,
+			ExpirationDate: fmt.Sprintf("%d/%d/%d", endPassValidityDate.Time().Year(), endPassValidityDate.Time().Month(), endPassValidityDate.Time().Day()),
+		},
 	}
 	err = globals.MessageSendQueue.EnqueueMessage(emailMessage)
 	if err != nil {

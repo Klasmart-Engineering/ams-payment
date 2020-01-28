@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
@@ -13,6 +14,7 @@ import (
 	"bitbucket.org/calmisland/go-server-messages/messagetemplates"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
+	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
 )
@@ -61,15 +63,6 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 
 	accountID := req.Session.Data.AccountID
 
-	allowed, err := purchasePermissions(accountID, reqBody.ProductCode)
-	if err != nil {
-		return resp.SetServerError(err)
-	}
-
-	if !allowed {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
-	}
-
 	item := createTransactionItem(reqBody.ProductCode)
 	passVO, err := globals.PassService.GetPassVOByPassID(item.ItemID)
 	if err != nil {
@@ -78,7 +71,11 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
 	}
 
-	response, err := makeBraintreePayment(reqBody.Nonce, fmt.Sprint(passVO.Price))
+	passPrice, err := passVO.Price.ToString(passVO.Currency)
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+	response, err := makeBraintreePayment(reqBody.Nonce, passPrice)
 	if err != nil {
 		return resp.SetServerError(err)
 	}
@@ -99,6 +96,8 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 	} else if accountInfo == nil {
 		return resp.SetClientError(apierrors.ErrorItemNotFound)
 	}
+	timeNow := timeutils.EpochMSNow()
+	endPassValidityDate := timeNow.Add(time.Duration(passVO.Duration))
 	userEmail := accountInfo.Email
 	userLanguage := accountInfo.Language
 	emailMessage := &messages.Message{
@@ -106,7 +105,10 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 		Priority:    messages.MessagePriorityEmailNormal,
 		Recipient:   userEmail,
 		Language:    userLanguage,
-		Template:    &messagetemplates.PassPurchasedTemplate{},
+		Template: &messagetemplates.PassPurchasedTemplate{
+			LearningPass:   passVO.Title,
+			ExpirationDate: fmt.Sprintf("%d/%d/%d", endPassValidityDate.Time().Year(), endPassValidityDate.Time().Month(), endPassValidityDate.Time().Day()),
+		},
 	}
 	err = globals.MessageSendQueue.EnqueueMessage(emailMessage)
 	if err != nil {
