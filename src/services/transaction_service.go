@@ -6,12 +6,17 @@ import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
+	"bitbucket.org/calmisland/go-server-product/passes"
+	"bitbucket.org/calmisland/go-server-product/passservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
+	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"github.com/calmisland/go-errors"
 )
 
-const transactionSeparator = "_"
+const (
+	transactionSeparator = "_"
+)
 
 type ITransactionService interface {
 	// GetTransaction return the transaction information based on an account and the associated receipt
@@ -24,10 +29,10 @@ type ITransactionService interface {
 	GetTransactionByTransactionCode(transactionCode *TransactionCode) (*Transaction, error)
 
 	// SaveTransactionUnlockPasses save the transaction as pendingSettlement and add the associated passes accesses
-	SaveTransactionUnlockPasses(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error
+	SaveTransactionUnlockPasses(accountID string, transactionCode *TransactionCode, items []*PassItem) error
 
 	// SaveTransactionUnlockProducts save the transaction as pendingSettlement and add the associated products accesses
-	SaveTransactionUnlockProducts(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error
+	SaveTransactionUnlockProducts(accountID string, transactionCode *TransactionCode, items []*productaccessservice.ProductAccessVOItem) error
 
 	// SettleTransactionByReceipt updates the transaction to settled
 	SettleTransactionByTransactionCode(transactionCode *TransactionCode) error
@@ -45,22 +50,23 @@ type Transaction struct {
 	AccountID        string
 	TransactionID    string
 	TransactionCode  *TransactionCode
-	PassList         []*TransactionItem
-	ProductList      []*TransactionItem
+	PassList         []*PassItem
+	ProductList      []*productaccessservice.ProductAccessVOItem
 	State            transactions.State
 	CancellationDate timeutils.EpochTimeMS
 	CreatedDate      timeutils.EpochTimeMS
 	UpdatedDate      timeutils.EpochTimeMS
 }
 
-type TransactionItem struct {
-	ItemID         string
-	StartDate      timeutils.EpochTimeMS
-	ExpirationDate timeutils.EpochTimeMS
+type PassItem struct {
+	PassID    string
+	StartDate timeutils.EpochTimeMS
+	Duration  passes.DurationDays
 }
 
 type TransactionStandardService struct {
 	AccountDatabase      accountdatabase.Database
+	PassService          *passservice.StandardPassService
 	PassAccessService    *passaccessservice.StandardPassAccessService
 	ProductAccessService *productaccessservice.StandardProductAccessService
 }
@@ -114,17 +120,8 @@ func (transactionService *TransactionStandardService) GetTransactionByTransactio
 }
 
 // SaveTransactionUnlockPasses save the transaction as pendingSettlement and add the associated passes accesses
-func (transactionService *TransactionStandardService) SaveTransactionUnlockPasses(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error {
+func (transactionService *TransactionStandardService) SaveTransactionUnlockPasses(accountID string, transactionCode *TransactionCode, items []*PassItem) error {
 	transactionID, err := buildTransactionIDFromTransactionCode(transactionCode)
-	if err != nil {
-		return err
-	}
-	err = transactionService.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
-		AccountID:     accountID,
-		TransactionID: transactionID,
-		Passes:        convertTransactionItemListToItemMap(items),
-		State:         transactions.PendingSettlement,
-	})
 	if err != nil {
 		return err
 	}
@@ -133,40 +130,75 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 	if err != nil {
 		return err
 	}
-	passAccessVOList := make([]*passaccessservice.PassAccessVO, len(items))
 
-	for _, item := range items {
+	// Check if all pass are not already active
+	passIds := make([]string, len(items))
+	for i, item := range items {
+		passIds[i] = item.PassID
 		for _, passAccessVO := range existingPassAccessVOList {
-			if item.ItemID == passAccessVO.PassID {
-				item.ExpirationDate = computeNewExpirationTime(passAccessVO.ExpirationDate, item.StartDate, item.ExpirationDate)
+			if item.PassID == passAccessVO.PassID {
+				// Cumulate Pass forbidden
+				return errors.New(apierrors.ErrorPaymentPassAccessAlreadyExist.String())
 			}
 		}
 	}
 
-	// Retrieve the existing transaction IDs for a pass
-	existingAccessTransactionIDsMap := make(map[string][]string)
-	for _, passAccessVO := range existingPassAccessVOList {
-		existingAccessTransactionIDsMap[passAccessVO.PassID] = passAccessVO.TransactionIDs
+	// Create the account transaction
+	err = transactionService.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
+		AccountID:     accountID,
+		TransactionID: transactionID,
+		Passes:        convertPassItemListToItemMap(items),
+		State:         transactions.PendingSettlement,
+	})
+	if err != nil {
+		return err
 	}
 
+	// Create Pass accesses
+	passAccessVOList := make([]*passaccessservice.PassAccessVO, len(items))
 	for i, item := range items {
-		expirationDate, err := setExpirationDateByStore(transactionCode.Store, item.ExpirationDate)
-		// If an unknown store is used, skip the permissions (but transaction is still saved since payment has been accepted)
-		if err != nil {
-			return err
-		}
 		passAccessVOList[i] = &passaccessservice.PassAccessVO{
 			AccountID:      accountID,
-			TransactionIDs: append(existingAccessTransactionIDsMap[item.ItemID], transactionID),
-			PassID:         item.ItemID,
-			ExpirationDate: expirationDate,
+			PassID:         item.PassID,
+			TransactionIDs: []string{transactionID},
+			ExpirationDate: timeutils.ConvEpochTimeMS(item.StartDate.Time().AddDate(0, 0, int(item.Duration))),
+			ActivationDate: item.StartDate,
 		}
 	}
-	return transactionService.PassAccessService.CreateOrUpdatePassAccessVOList(passAccessVOList)
+	err = transactionService.PassAccessService.CreateOrUpdatePassAccessVOList(passAccessVOList)
+	if err != nil {
+		return err
+	}
+
+	// Save the passes one by one (rare case), for reusability purpose. Should be improved to save everything in 1 batch
+	passVOList, err := transactionService.PassService.GetPassVOListByIds(passIds)
+	if err != nil {
+		return err
+	}
+	for _, item := range items {
+		for _, passVO := range passVOList {
+			if item.PassID == passVO.PassID {
+				productItems := make([]*productaccessservice.ProductAccessVOItem, len(passVO.Products))
+				for i, productID := range passVO.Products {
+					productItems[i] = &productaccessservice.ProductAccessVOItem{
+						ProductID: productID,
+						StartDate: item.StartDate,
+						Duration:  item.Duration,
+					}
+				}
+				err := transactionService.ProductAccessService.CreateOrUpdateProductAccessVOListByTransaction(accountID, transactionID, productItems)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // SaveTransactionUnlockProducts save the transaction as pendingSettlement and add the associated products accesses
-func (transactionService *TransactionStandardService) SaveTransactionUnlockProducts(accountID string, transactionCode *TransactionCode, items []*TransactionItem) error {
+func (transactionService *TransactionStandardService) SaveTransactionUnlockProducts(accountID string, transactionCode *TransactionCode, items []*productaccessservice.ProductAccessVOItem) error {
 	transactionID, err := buildTransactionIDFromTransactionCode(transactionCode)
 	if err != nil {
 		return err
@@ -174,47 +206,14 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockProdu
 	err = transactionService.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
 		AccountID:     accountID,
 		TransactionID: transactionID,
-		Products:      convertTransactionItemListToItemMap(items),
+		Products:      convertProductAccessVOItemListToItemMap(items),
 		State:         transactions.PendingSettlement,
 	})
 	if err != nil {
 		return err
 	}
 
-	existingProductAccessVOList, err := transactionService.ProductAccessService.GetProductAccessVOListByAccountID(accountID)
-	if err != nil {
-		return err
-	}
-	productAccessVOList := make([]*productaccessservice.ProductAccessVO, len(items))
-
-	for _, item := range items {
-		for _, productAccessVO := range existingProductAccessVOList {
-			if item.ItemID == productAccessVO.ProductID {
-				item.ExpirationDate = computeNewExpirationTime(productAccessVO.ExpirationDate, item.StartDate, item.ExpirationDate)
-			}
-		}
-	}
-
-	// Retrieve the existing transaction IDs for a product
-	existingAccessTransactionIDsMap := make(map[string][]string)
-	for _, productAccessVO := range existingProductAccessVOList {
-		existingAccessTransactionIDsMap[productAccessVO.ProductID] = productAccessVO.TransactionIDs
-	}
-
-	for i, item := range items {
-		expirationDate, err := setExpirationDateByStore(transactionCode.Store, item.ExpirationDate)
-		// If an unknown store is used, skip the permissions (but transaction is still saved since payment has been accepted)
-		if err != nil {
-			return err
-		}
-		productAccessVOList[i] = &productaccessservice.ProductAccessVO{
-			AccountID:      accountID,
-			TransactionIDs: append(existingAccessTransactionIDsMap[item.ItemID], transactionID),
-			ProductID:      item.ItemID,
-			ExpirationDate: expirationDate,
-		}
-	}
-	return transactionService.ProductAccessService.CreateOrUpdateProductAccessVOList(productAccessVOList)
+	return transactionService.ProductAccessService.CreateOrUpdateProductAccessVOListByTransaction(accountID, transactionID, items)
 }
 
 // SettleTransactionByReceipt updates the transaction to settled
@@ -228,7 +227,7 @@ func (transactionService *TransactionStandardService) SettleTransactionByTransac
 	if err != nil {
 		return err
 	} else if accTransactionInfo == nil {
-		return errors.Errorf("Failed to find transaction with ID: %s", transactionID)
+		return errors.New(apierrors.ErrorPaymentTransactionNotFound.String())
 	}
 
 	return transactionService.AccountDatabase.UpdateAccountTransaction(&accountdatabase.UpdateAccountTransactionInfo{
@@ -249,7 +248,7 @@ func (transactionService *TransactionStandardService) ReverseTransactionByTransa
 	if err != nil {
 		return err
 	} else if accTransactionInfo == nil {
-		return errors.Errorf("Failed to find transaction with ID: %s", transactionID)
+		return errors.New(apierrors.ErrorPaymentTransactionNotFound.String())
 	}
 
 	// Update the state of the transaction
@@ -294,16 +293,7 @@ func buildTransactionIDFromTransactionCode(transactionCode *TransactionCode) (st
 	case transactions.GooglePlay, transactions.Apple, transactions.BrainTree, transactions.PayPal:
 		return fmt.Sprintf("%s%s%s", transactionCode.Store, transactionSeparator, transactionCode.ID), nil
 	default:
-		return "", errors.New("Unknown transaction store")
-	}
-}
-
-func setExpirationDateByStore(store transactions.Store, expirationDate timeutils.EpochTimeMS) (timeutils.EpochTimeMS, error) {
-	switch store {
-	case transactions.GooglePlay, transactions.Apple, transactions.BrainTree, transactions.PayPal:
-		return expirationDate, nil
-	default:
-		return 0, errors.New("Unknown transaction store")
+		return "", errors.New(apierrors.ErrorPaymentUnknownTransactionStore.String())
 	}
 }
 
@@ -312,24 +302,47 @@ func computeNewExpirationTime(oldExpirationDate, newStartDate, newExpirationDate
 	return oldExpirationDate.Add(deltaDuration)
 }
 
-func convertItemMapToTransactionItem(itemMap map[string]*accountdatabase.AccountTransactionItem) []*TransactionItem {
-	transactionItemList := make([]*TransactionItem, 0, len(itemMap))
+func convertItemMapToProductAccessVOItem(itemMap map[string]*accountdatabase.AccountTransactionItem) []*productaccessservice.ProductAccessVOItem {
+	transactionItemList := make([]*productaccessservice.ProductAccessVOItem, 0, len(itemMap))
 	for key, value := range itemMap {
-		transactionItemList = append(transactionItemList, &TransactionItem{
-			ItemID:         key,
-			StartDate:      value.StartDate,
-			ExpirationDate: value.ExpirationDate,
+		transactionItemList = append(transactionItemList, &productaccessservice.ProductAccessVOItem{
+			ProductID: key,
+			StartDate: value.StartDate,
+			Duration:  passes.DurationDays(value.ExpirationDate.Time().Sub(value.StartDate.Time()).Hours() / 24),
 		})
 	}
 	return transactionItemList
 }
 
-func convertTransactionItemListToItemMap(items []*TransactionItem) map[string]*accountdatabase.AccountTransactionItem {
+func convertItemMapToPassItem(itemMap map[string]*accountdatabase.AccountTransactionItem) []*PassItem {
+	transactionItemList := make([]*PassItem, 0, len(itemMap))
+	for key, value := range itemMap {
+		transactionItemList = append(transactionItemList, &PassItem{
+			PassID:    key,
+			StartDate: value.StartDate,
+			Duration:  passes.DurationDays(value.ExpirationDate.Time().Sub(value.StartDate.Time()).Hours() / 24),
+		})
+	}
+	return transactionItemList
+}
+
+func convertPassItemListToItemMap(items []*PassItem) map[string]*accountdatabase.AccountTransactionItem {
 	itemMap := make(map[string]*accountdatabase.AccountTransactionItem)
 	for _, item := range items {
-		itemMap[item.ItemID] = &accountdatabase.AccountTransactionItem{
+		itemMap[item.PassID] = &accountdatabase.AccountTransactionItem{
 			StartDate:      item.StartDate,
-			ExpirationDate: item.ExpirationDate,
+			ExpirationDate: timeutils.ConvEpochTimeMS(item.StartDate.Time().AddDate(0, 0, int(item.Duration))),
+		}
+	}
+	return itemMap
+}
+
+func convertProductAccessVOItemListToItemMap(items []*productaccessservice.ProductAccessVOItem) map[string]*accountdatabase.AccountTransactionItem {
+	itemMap := make(map[string]*accountdatabase.AccountTransactionItem)
+	for _, item := range items {
+		itemMap[item.ProductID] = &accountdatabase.AccountTransactionItem{
+			StartDate:      item.StartDate,
+			ExpirationDate: timeutils.ConvEpochTimeMS(item.StartDate.Time().AddDate(0, 0, int(item.Duration))),
 		}
 	}
 	return itemMap
@@ -351,8 +364,8 @@ func convertAccountTransactionInfoToTransaction(accTransactionInfo *accountdatab
 	return &Transaction{
 		AccountID:        accTransactionInfo.AccountID,
 		TransactionID:    accTransactionInfo.TransactionID,
-		PassList:         convertItemMapToTransactionItem(accTransactionInfo.Passes),
-		ProductList:      convertItemMapToTransactionItem(accTransactionInfo.Products),
+		PassList:         convertItemMapToPassItem(accTransactionInfo.Passes),
+		ProductList:      convertItemMapToProductAccessVOItem(accTransactionInfo.Products),
 		State:            accTransactionInfo.State,
 		CancellationDate: accTransactionInfo.CancellationDate,
 		CreatedDate:      accTransactionInfo.CreatedDate,
