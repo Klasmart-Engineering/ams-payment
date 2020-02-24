@@ -8,6 +8,7 @@ import (
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator"
 	"bitbucket.org/calmisland/go-server-logs/logger"
+	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
@@ -56,11 +57,11 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 
 	// Validate Input parameters
 	if len(transactionID) == 0 {
-		resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("transactionId"))
+		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("transactionId"))
 	} else if len(storeID) == 0 {
-		resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("storeId"))
+		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("storeId"))
 	} else if len(receipt) == 0 {
-		resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
+		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
 	}
 
 	accountID := req.Session.Data.AccountID
@@ -135,7 +136,8 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	}
 
 	productType := storeproducts.StoreProductTypeDefault
-	transactionItems := make([]*services.TransactionItem, 0, len(storeProducts))
+	passItems := []*services.PassItem{}
+	productItems := []*productaccessservice.ProductAccessVOItem{}
 
 	timeNow := timeutils.EpochMSNow()
 	for _, product := range storeProducts {
@@ -153,27 +155,26 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 				return resp.SetServerError(errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
 			}
 
-			expirationDate := timeNow.Add(time.Duration(passInfo.Duration) * oneDay)
-			transactionItems = append(transactionItems, &services.TransactionItem{
-				ItemID:         passInfo.PassID,
-				StartDate:      timeNow,
-				ExpirationDate: expirationDate,
+			passItems = append(passItems, &services.PassItem{
+				PassID:    passInfo.PassID,
+				StartDate: timeNow,
+				Duration:  passInfo.Duration,
 			})
 		} else if product.Type == storeproducts.StoreProductTypeProduct {
-			transactionItems = append(transactionItems, &services.TransactionItem{
-				ItemID:    product.ItemID,
+			productItems = append(productItems, &productaccessservice.ProductAccessVOItem{
+				ProductID: product.ItemID,
 				StartDate: timeNow,
 			})
 		}
 	}
 
 	if productType == storeproducts.StoreProductTypeProduct {
-		err = globals.TransactionService.SaveTransactionUnlockProducts(accountID, &transactionCode, transactionItems)
+		err = globals.TransactionService.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
-		err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, transactionItems)
+		err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}

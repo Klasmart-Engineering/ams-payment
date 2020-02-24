@@ -95,14 +95,15 @@ func setupServices(accountDatabase accountdatabase.Database, productDatabase pro
 		ProductDatabase: productDatabase,
 	}
 
-	transactionService := &services.TransactionStandardService{
-		AccountDatabase:      accountDatabase,
-		PassAccessService:    passAccessService,
-		ProductAccessService: productAccessService,
-	}
-
 	passService := &passservice.StandardPassService{
 		ProductDatabase: productDatabase,
+	}
+
+	transactionService := &services.TransactionStandardService{
+		AccountDatabase:      accountDatabase,
+		PassService:          passService,
+		PassAccessService:    passAccessService,
+		ProductAccessService: productAccessService,
 	}
 
 	productService := &productservice.StandardProductService{

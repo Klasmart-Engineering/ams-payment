@@ -5,30 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
 	"bitbucket.org/calmisland/go-server-logs/logger"
 	"bitbucket.org/calmisland/go-server-messages/messages"
 	"bitbucket.org/calmisland/go-server-messages/messagetemplates"
+	"bitbucket.org/calmisland/go-server-product/passes"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
 )
-
-func createTransactionItem(ItemID string) *services.TransactionItem {
-	now := timeutils.EpochMSNow()
-	const oneYear = 365 * 24 * time.Hour
-	expiration := now.Add(oneYear)
-	return &services.TransactionItem{
-		ItemID:         ItemID,
-		StartDate:      now,
-		ExpirationDate: expiration,
-	}
-}
 
 type paypalPaymentRequestBody struct {
 	OrderID     string `json:"orderId"`
@@ -44,12 +33,17 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 
 	accountID := req.Session.Data.AccountID
 
-	item := createTransactionItem(reqBody.ProductCode)
-	passVO, err := globals.PassService.GetPassVOByPassID(item.ItemID)
+	passVO, err := globals.PassService.GetPassVOByPassID(reqBody.ProductCode)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if passVO == nil {
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+	}
+
+	item := &services.PassItem{
+		PassID:    passVO.PassID,
+		StartDate: timeutils.EpochMSNow(),
+		Duration:  passes.DurationDays(passVO.Duration),
 	}
 
 	passPrice, err := passVO.Price.ToString(passVO.Currency)
@@ -67,8 +61,7 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 		Store: transactions.PayPal,
 		ID:    reqBody.OrderID,
 	}
-	items := []*services.TransactionItem{item}
-	err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, items)
+	err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, []*services.PassItem{item})
 	if err != nil {
 		return resp.SetServerError(err)
 	}
@@ -81,7 +74,7 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 		return resp.SetClientError(apierrors.ErrorItemNotFound)
 	}
 	timeNow := timeutils.EpochMSNow()
-	endPassValidityDate := timeNow.Add(time.Duration(passVO.Duration))
+	endPassValidityDate := timeutils.ConvEpochTimeMS(timeNow.Time().AddDate(0, 0, int(passVO.Duration)))
 	userEmail := accountInfo.Email
 	userLanguage := accountInfo.Language
 	emailMessage := &messages.Message{
