@@ -72,6 +72,8 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 
 	item := &services.PassItem{
 		PassID:    passVO.PassID,
+		Price:     passVO.Price,
+		Currency:  passVO.Currency,
 		StartDate: timeutils.EpochMSNow(),
 		Duration:  passes.DurationDays(passVO.Duration),
 	}
