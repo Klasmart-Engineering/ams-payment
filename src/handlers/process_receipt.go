@@ -157,6 +157,8 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 
 			passItems = append(passItems, &services.PassItem{
 				PassID:    passInfo.PassID,
+				Price:     passInfo.Price,
+				Currency:  passInfo.Currency,
 				StartDate: timeNow,
 				Duration:  passInfo.Duration,
 			})

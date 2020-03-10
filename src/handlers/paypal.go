@@ -42,6 +42,8 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 
 	item := &services.PassItem{
 		PassID:    passVO.PassID,
+		Price:     passVO.Price,
+		Currency:  passVO.Currency,
 		StartDate: timeutils.EpochMSNow(),
 		Duration:  passes.DurationDays(passVO.Duration),
 	}
