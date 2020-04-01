@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
@@ -120,6 +121,8 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 	if err != nil {
 		return resp.SetServerError(err)
 	}
+
+	log.Printf("[BRAINTREEPAYMENT] A payment for the pass [%s] by account [%s] succeeded\n", passVO.PassID, accountID)
 
 	resp.SetBody(response)
 	return nil
