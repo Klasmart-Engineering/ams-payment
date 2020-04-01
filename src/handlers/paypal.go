@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
@@ -93,6 +94,8 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	if err != nil {
 		return resp.SetServerError(err)
 	}
+
+	log.Printf("[PAYPALPAYMENT] A payment for the pass [%s] by account [%s] succeeded\n", passVO.PassID, accountID)
 
 	resp.SetBody(response)
 	return nil
