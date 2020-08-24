@@ -63,6 +63,7 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/awa/go-iap v1.1.0 h1:po4daEfJPi38Uh6Ci5DCWX6s7BuNBAd6m13pXps85b8=
 github.com/awa/go-iap v1.1.0/go.mod h1:hkZpUx2eWdcsyASB/tIXdlWXiDS+9aThn21KEOWxGSs=
+github.com/awa/go-iap v1.3.2 h1:CA2aNykjBjLa6NSCRhGEcLYowjsWpzYaXCPdCij+4bE=
 github.com/aws/aws-lambda-go v1.13.2 h1:8lYuRVn6rESoUNZXdbCmtGB4bBk4vcVYojiHjE4mMrM=
 github.com/aws/aws-lambda-go v1.13.2/go.mod h1:4UKl9IzQMoD+QF79YdCuzCwp8VbmG4VAQwij/eHl5CU=
 github.com/aws/aws-sdk-go v1.19.41/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
