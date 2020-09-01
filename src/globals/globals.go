@@ -48,6 +48,9 @@ var (
 	// PayPalPaymentFunction is the lambda function that provides access to the paypal payment gateway
 	PayPalPaymentFunction cloudfunctions.Function
 
+	// PaymentSlackMessageService is a service sending messages to #
+	PaymentSlackMessageService *services.SlackMessageService
+
 	// MessageSendQueue is the message send queue.
 	MessageSendQueue sendmessagequeue.Queue
 )
@@ -88,6 +91,9 @@ func Verify() {
 		panic(errors.New("The paypal payment function has not been set"))
 	}
 	if MessageSendQueue == nil {
+		panic(errors.New("The message send queue has not been set"))
+	}
+	if PaymentSlackMessageService == nil {
 		panic(errors.New("The message send queue has not been set"))
 	}
 }

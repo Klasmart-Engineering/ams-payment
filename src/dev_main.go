@@ -30,6 +30,7 @@ func main() {
 		Handler:       rootRouter,
 	}
 
+	println("started - port: 8092")
 	err = restServer.ListenAndServe()
 	if err != nil {
 		panic(err)

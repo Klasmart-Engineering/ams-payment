@@ -28,6 +28,7 @@ import (
 // Setup setup the server based on configuration
 func Setup() {
 	setupSlackReporter()
+	SetupSlackMessageService()
 
 	accountDatabase := setupAccountDatabase()
 	productDatabase := setupProductDatabase()
@@ -43,6 +44,19 @@ func Setup() {
 	setupMessageQueue()
 
 	globals.Verify()
+}
+
+// SetupSlackMessageService setup Slack channel
+func SetupSlackMessageService() {
+	var config services.SlackConfig
+
+	err := configs.LoadConfig("slack", &config, true)
+	if err != nil {
+		panic(err)
+	}
+
+	globals.PaymentSlackMessageService = &services.SlackMessageService{WebHookURL: config.PaymentChannel}
+
 }
 
 func setupAccountDatabase() accountdatabase.Database {

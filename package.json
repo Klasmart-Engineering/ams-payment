@@ -1,0 +1,44 @@
+{
+  "name": "account-lambda-funcs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon --signal SIGHUP"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@bitbucket.org/calmisland/account-lambda-funcs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "homepage": "https://bitbucket.org/calmisland/account-lambda-funcs#readme",
+  "devDependencies": {
+    "nodemon": "^1.18.11"
+  },
+  "nodemonConfig": {
+    "ext": "go json",
+    "exec": "go run ./src",
+    "ignore": [
+      ".git",
+      "test/*",
+      "docs/*"
+    ],
+    "watch": [
+      "src/*",
+      "configs/*"
+    ],
+    "verbose": true,
+    "env": {
+      "SERVER_STAGE": "prod",
+      "APPLE_APPSTORE_IAP_SHARED_SECRET": "b8fed5b4c88e4f2f9386a261823d4541",
+      "SERVER_REGION": "tokyo",
+      "GOOGLE_PLAYSTORE_JSON_KEY": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50IiwicHJvamVjdF9pZCI6ImJhZGFsaWJyYXJ5IiwicHJpdmF0ZV9rZXlfaWQiOiIxM2M0OTM4OGU4ZDMzMjYzNTVlNWU5YzdhYjAxZTE3OWFkMzg2MWQwIiwicHJpdmF0ZV9rZXkiOiItLS0tLUJFR0lOIFBSSVZBVEUgS0VZLS0tLS1cbk1JSUV2d0lCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktrd2dnU2xBZ0VBQW9JQkFRRDBxNm9wMlMvbS8rZ2lcbjg5ZDl4NXlJTVVseE5jQzUxQzVDRVdzeXlqUjBNYUNrL1Q4ZW1MWUxvOVYwSnJWcTlzSi9ZZ3loVGRyY3p3emNcbittRFRMWnExbmxmcGJTT0l5SnJlRThhVFJUTW5zZDR4alYwM2dFTmN6c05GS2RueEtILzZSb1E2ZzZTQlRIRXNcbmorclkrblhMYW1NbU1lUVNJdGtyeGtxd0E0SitqcWtsaTdaZzZhNDlTaTdvMDg2ekprWE0yNmhnZ3hpUGQxWUlcbllvSkluWmFLOHY4NTFybU1MK29UZEVrSlRwY2RXWC8xRkpOblBubkVjSTk2V3FPUG15QlRLUG9sdFJZdWRaSlNcbmtSSHRUMnVWalhKNFpZVElDMXMxQXlLbVJueS9YakVIODk4ZlFheStlQlNaYk9pNXRGbzFqeUJNTjQ2Rmk3UmNcbkRiV0ozN2JGQWdNQkFBRUNnZ0VCQU1iYjUzZ1A4Q0VlQ1h5dkY0eEJldll1cVBSOHJlSGJsS1ZhSnZpbTVDODBcblRzOEtqZ3krTGVnVUJ0OWF2c1RyUG5YdUtUbkpYNE5zUFpZMVloRUIxZWFiaGZSUklqcUFZVzd5UDhsZXl3OE9cblAvdWlYQXRLRW5ZU0R4L2R2aWVGdFU2amxjRkJVYWxOaWdhZ0NrN0VjbzBjTU8zUVN3QjZsbXcveEdCKzJjY2xcbmNYR0ppTG5VVWZGa05TV3hRRU5xS1EvdUVuSXpEalhXZlpVUm1LalJLbEtVSXNOMW5vV3UzZDl2VTZGcGdKa1lcbmZ0ODUwL0pRSXZsK2V3cXVKNSt2RlQyMk9sNkRHUm1VOXN4eWF1ZTFySFh4SjY4cVNmcThpMVF5dnJMWG1GdDFcblo4K1V0eFpqaURURGtoUG1BZUZ6T1BqL3UzREVPaHV1dG1xbEM5ekhZNEVDZ1lFQS9nRHp3NzJlMjFlWDVaWWRcbjFzNGJseFNXZjMxSE9HWVlUZUdhd2l6VmFMUWcwZm0vdExBeE9XY3hqeDZZYkJoNTUyNHlmWW5nV0VQblo3S01cbm1RQ0wxcWFyTFJaeFpSOGp1R3c1RS83S1gxbjQvaXUxQU9zU2QwWjZDUzhnMUlwdEpQbTE2dW1WREdvT2xFQWVcbkJZMXQzaGJZRnVzc2pKMFFzbVJGeEV5anl6RUNnWUVBOXBmdk9ZZkpkSWJWWXlrMm01WU9pT0JiWHg0MDdKRUxcbldmUHZuM1JBdlJTV0hScVp5c3U1ZHpYSkNvVkoyOE9jZzB1R1hGd0VUSjFDYXNmMlpyRWhuNUJqV1JoampzZWFcbmNMQXNhZUtQTjNOanlqT2hmRjdSN3B0M2xQUmFkZHAydFJTTi9iRUlrcmV2OUVzQlFGRXdzNk43NlFnbXpUSVRcbm9QSXk3cjJxVjlVQ2dZRUE0UXRVN250RmtRN1ZqTnRwQ3BWSUNwNTZEUENoTmszMmdLSS9MSVR1ZTdzRVRTV2Fcbi9Xc1I0Y3NWTkxtbDBEZ0xZY25Yd0RSMWFaNllHdDh1QksxZ09Fa281bVM1Q1NBQzFQWkZ4L3A1c091VldSUytcblpOYmhZSDQzeDRWUzhCekpRUFpoZ0lWOXdpY0JUY1pWRXhSUVlISWErSXRheUNhczBYRllBdWpvUWpFQ2dZQU9cbnZ2RW9RSTEwY1dlclFWaXBueVNKWE5rNTYrV0FUQUFneGV5TFhYbE5sVUNReHZseFhoTmVKSkk4RmRKZjJPZXdcbkZrRVhuczBIQTlSbjdFTTR5dGpXNE55QUJHeFhxbW42MlI0ZXl0U0RuVnZYU0pVY2lkTUY4TGdLNlQzTGxGL0tcbjNrckxZOTIrWUV1ZVVTbm0vYlBxMmhqYnk0ZitkME1qT2JoLy9FbUdiUUtCZ1FDUFUxU1JvVyt1TGVybjlMUjZcbkFTNnR0VkpibWprRy9FMGVzdmN2eGdPRm85SmY3dXFvMk51ZnlFdWNuWjFxQ2lHMkVFMFRtWXZpS0lQVFI1ajRcbjh2OXhmcGU4TmhyRWRCZi8wLzhPaW9ZaGFNWHc2UkpCWGlud0VaYlVGL041ZnFDS1h0K0tDMmRHWGJIakY1Z0xcbkJteWNKRW8wUHpmQVdLNVp4a2RDSVcwa1VRPT1cbi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS1cbiIsImNsaWVudF9lbWFpbCI6ImFuZHJvaWRwdWJsaXNoZXJjbWRAYmFkYWxpYnJhcnkuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJjbGllbnRfaWQiOiIxMDU4NjIxNzQ2NzI1MzM2MzI2ODAiLCJhdXRoX3VyaSI6Imh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbS9vL29hdXRoMi9hdXRoIiwidG9rZW5fdXJpIjoiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tL28vb2F1dGgyL3Rva2VuIiwiYXV0aF9wcm92aWRlcl94NTA5X2NlcnRfdXJsIjoiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vb2F1dGgyL3YxL2NlcnRzIiwiY2xpZW50X3g1MDlfY2VydF91cmwiOiJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9yb2JvdC92MS9tZXRhZGF0YS94NTA5L2FuZHJvaWRwdWJsaXNoZXJjbWQlNDBiYWRhbGlicmFyeS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSJ9"
+    }
+  }
+}

@@ -15,6 +15,8 @@ require (
 	bitbucket.org/calmisland/go-server-product v1.12.0
 	bitbucket.org/calmisland/go-server-requests v1.16.5
 	bitbucket.org/calmisland/go-server-utils v1.9.1
+	github.com/Jeffail/gabs/v2 v2.6.0
 	github.com/calmisland/go-errors v0.9.2
 	github.com/calmisland/go-testify v1.3.3
+	github.com/multiplay/go-slack v0.0.0-20200412115802-09e9e2b93fe2
 )
