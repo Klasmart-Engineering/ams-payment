@@ -1,6 +1,10 @@
 package globalsetup
 
 import (
+	"fmt"
+	"log"
+	"os"
+
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
 	"bitbucket.org/calmisland/go-server-account/accountdatabase/accountdynamodb"
 	"bitbucket.org/calmisland/go-server-aws/awsdynamodb"
@@ -23,10 +27,13 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
+
+	"github.com/getsentry/sentry-go"
 )
 
 // Setup setup the server based on configuration
 func Setup() {
+	setupSentry()
 	setupSlackReporter()
 	SetupSlackMessageService()
 
@@ -44,6 +51,17 @@ func Setup() {
 	setupMessageQueue()
 
 	globals.Verify()
+}
+
+func setupSentry() {
+	var env string = fmt.Sprintf("%s@%s", os.Getenv("SERVER_STAGE"), os.Getenv("SERVER_REGION"))
+	err := sentry.Init(sentry.ClientOptions{
+		Dsn:         "https://f8d1fc600ed24b4581f7d2d5ea37aecb@o412774.ingest.sentry.io/5413073",
+		Environment: env,
+	})
+	if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}
 }
 
 // SetupSlackMessageService setup Slack channel
