@@ -93,7 +93,4 @@ func Verify() {
 	if MessageSendQueue == nil {
 		panic(errors.New("The message send queue has not been set"))
 	}
-	if PaymentSlackMessageService == nil {
-		panic(errors.New("The message send queue has not been set"))
-	}
 }
