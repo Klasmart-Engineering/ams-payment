@@ -2,8 +2,8 @@ bitbucket.org/calmisland/go-server-account v1.13.3 h1:V+OkNFM9o6gsS/QhzuktLWZwAk
 bitbucket.org/calmisland/go-server-account v1.13.3/go.mod h1:4nflQXToixhHlXocjqZf1PaSuQmgITYWQ6dv4YnPwOQ=
 bitbucket.org/calmisland/go-server-api v0.2.3 h1:ZKZWcZmkM08mHh/+40dbb4symBVTuNbybEx3rnOnPI4=
 bitbucket.org/calmisland/go-server-api v0.2.3/go.mod h1:T2qOVqHZeTIqow+Mu8LtZUTOrm4WEv/5rWOhXozmqKU=
-bitbucket.org/calmisland/go-server-auth v1.2.0 h1:kIq/BxmEls9QhOk3ppMorMsDOeNnoe6PHG8HfpvSzNg=
-bitbucket.org/calmisland/go-server-auth v1.2.0/go.mod h1:IGgREMcgJleLqcR1BvVmp/jZFMQqq5Ivq2BGvTPFgWI=
+bitbucket.org/calmisland/go-server-auth v1.2.1 h1:AtJ7sqSdTGjJ0zCg4FpIY5nyqsI8/09EJBM43Cu6fQk=
+bitbucket.org/calmisland/go-server-auth v1.2.1/go.mod h1:kQkvE3eSCXJxbKrXzskXueRT+4wOsa6NQ9XDE9bfuC4=
 bitbucket.org/calmisland/go-server-aws v1.14.0 h1:UszssGkFrH3i6t52IIpPtuIM9FNNYtzcQg4iTBNIlz4=
 bitbucket.org/calmisland/go-server-aws v1.14.0/go.mod h1:uj4MsWzkebamgpWxzl7V2AU/v8XzUPEO+A/eCsFZoTg=
 bitbucket.org/calmisland/go-server-aws v1.14.1 h1:Ip9tjSnlMfWaC5OEHt9PAB3P1Uvgx+GA46MdmWfa+is=
@@ -13,8 +13,8 @@ bitbucket.org/calmisland/go-server-cloud v0.4.0/go.mod h1:Pj0M0shW4ewSWxDUCoVg/M
 bitbucket.org/calmisland/go-server-configs v1.1.0/go.mod h1:6A16xMOyOlSNoN5v7NhT2VxhyKmM3PRnVTVk5XwoaYk=
 bitbucket.org/calmisland/go-server-configs v1.1.1 h1:t9ima9mUJM96Xp25TW7h+4Xai7Rt9bCBO2/fsefgzFE=
 bitbucket.org/calmisland/go-server-configs v1.1.1/go.mod h1:6A16xMOyOlSNoN5v7NhT2VxhyKmM3PRnVTVk5XwoaYk=
-bitbucket.org/calmisland/go-server-configs v1.1.2 h1:AMCmrkfCDe8PsKZFqU8og0qkxlGETj5pyn2Z8YN1pw8=
-bitbucket.org/calmisland/go-server-configs v1.1.2/go.mod h1:6A16xMOyOlSNoN5v7NhT2VxhyKmM3PRnVTVk5XwoaYk=
+bitbucket.org/calmisland/go-server-configs v1.1.3 h1:rkF6KcZ4eRdXyca0F9VaAqZ7V2qf9AgmCKdc7JyXVNY=
+bitbucket.org/calmisland/go-server-configs v1.1.3/go.mod h1:6A16xMOyOlSNoN5v7NhT2VxhyKmM3PRnVTVk5XwoaYk=
 bitbucket.org/calmisland/go-server-databases v0.6.0 h1:R8aVVud9cV3Aeef+rKSmsk+yaIXWkPUWl5PaLTxYGx0=
 bitbucket.org/calmisland/go-server-databases v0.6.0/go.mod h1:pq9GmqUTed0NGI9bjaRswZlTwtBD/JgT9AWp3keSfN0=
 bitbucket.org/calmisland/go-server-emails v1.1.0/go.mod h1:Xn2F1hs6cLOaNX1a+Te301ZZtMgJirUk4DTeo3fNgSI=
@@ -40,8 +40,8 @@ bitbucket.org/calmisland/go-server-reference-data v1.2.0/go.mod h1:zeNZlxBHPNDrZ
 bitbucket.org/calmisland/go-server-requests v1.9.1 h1:+R8denTO7ySNSXYUNKKvwNi8gd0iDegcdLF0JVoNbPQ=
 bitbucket.org/calmisland/go-server-requests v1.9.1/go.mod h1:S2W1oM0yaTXC9ls4TbP4B7eNKCIgPM0PNBuxKPLI8Sw=
 bitbucket.org/calmisland/go-server-requests v1.12.0/go.mod h1:S2W1oM0yaTXC9ls4TbP4B7eNKCIgPM0PNBuxKPLI8Sw=
-bitbucket.org/calmisland/go-server-requests v1.20.0 h1:GJ4ZIwKhzqqdSKoaeMfx6xNbKcQhvzdCsxgoU+qT/BQ=
-bitbucket.org/calmisland/go-server-requests v1.20.0/go.mod h1:xW4faoT7cYG3ZMqnG1RHPnCN1r0wWvnIEtq4Fo+0D7s=
+bitbucket.org/calmisland/go-server-requests v1.20.1 h1:UWXWv1cZkUx6Tnc+aTFgqNwwtqQYVEIeJ2Pmd4uh+PU=
+bitbucket.org/calmisland/go-server-requests v1.20.1/go.mod h1:xW4faoT7cYG3ZMqnG1RHPnCN1r0wWvnIEtq4Fo+0D7s=
 bitbucket.org/calmisland/go-server-utils v1.4.0/go.mod h1:5icb47nXPo2GH++D+2DSYnzPIZrlQmQ7Pi7jA+gS2yQ=
 bitbucket.org/calmisland/go-server-utils v1.5.0 h1:rKIondpcuS/uGCvZ9N1q61CVAro7mb1++TjHVwvinvc=
 bitbucket.org/calmisland/go-server-utils v1.5.0/go.mod h1:5icb47nXPo2GH++D+2DSYnzPIZrlQmQ7Pi7jA+gS2yQ=

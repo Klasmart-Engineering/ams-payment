@@ -1,6 +1,7 @@
 package globalsetup
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -155,11 +156,15 @@ func setupServices(accountDatabase accountdatabase.Database, productDatabase pro
 }
 
 func setupAccessTokenSystems() {
+	var err error
 	var validatorConfig accesstokens.ValidatorConfig
-	err := configs.LoadConfig("access_tokens", &validatorConfig, true)
-	if err != nil {
-		panic(err)
+
+	bPublicKey := configs.LoadBinary("account.pub")
+	if bPublicKey == nil {
+		panic(errors.New("the account.pub file is mandatory"))
 	}
+
+	validatorConfig.PublicKey = string(bPublicKey)
 
 	globals.AccessTokenValidator, err = accesstokens.NewValidator(validatorConfig)
 	if err != nil {
