@@ -27,6 +27,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/iap"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
 
 	"github.com/getsentry/sentry-go"
@@ -34,6 +35,7 @@ import (
 
 // Setup setup the server based on configuration
 func Setup() {
+	iap.GetService().Initialize()
 	setupSentry()
 	setupSlackReporter()
 	SetupSlackMessageService()
@@ -56,6 +58,7 @@ func Setup() {
 
 func setupSentry() {
 	var env string = fmt.Sprintf("%s@%s", os.Getenv("SERVER_STAGE"), os.Getenv("SERVER_REGION"))
+	fmt.Println(env)
 	err := sentry.Init(sentry.ClientOptions{
 		Dsn:         "https://f8d1fc600ed24b4581f7d2d5ea37aecb@o412774.ingest.sentry.io/5413073",
 		Environment: env,
@@ -175,9 +178,12 @@ func setupAccessTokenSystems() {
 func setupGooglePlayReceiptValidator() {
 	var googlePlayValidatorConfig googleplaystorereceipts.ReceiptValidatorConfig
 	err := configs.LoadConfig("googleplay_receipt_validator", &googlePlayValidatorConfig, false)
+
 	if err != nil {
 		panic(err)
 	}
+
+	googlePlayValidatorConfig.AppPublicKeys = iap.GetService().AndroidPublicKeys
 
 	if len(googlePlayValidatorConfig.JSONKey) > 0 || len(googlePlayValidatorConfig.JSONKeyFile) > 0 {
 		globals.GooglePlayReceiptValidator, err = googleplaystorereceipts.NewReceiptValidator(googlePlayValidatorConfig)
@@ -186,7 +192,9 @@ func setupGooglePlayReceiptValidator() {
 		}
 	} else {
 		globals.GooglePlayReceiptValidator = nil
+		panic("Failed to generate Google Play Receipt validator")
 	}
+
 }
 
 func setupAppleStoreReceiptValidator() {

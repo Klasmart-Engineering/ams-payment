@@ -1,3 +1,4 @@
 # executables
 /bin/
 node_modules/
+.env
