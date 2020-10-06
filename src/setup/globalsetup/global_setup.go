@@ -3,8 +3,9 @@ package globalsetup
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
 	"bitbucket.org/calmisland/go-server-account/accountdatabase/accountdynamodb"
@@ -35,6 +36,10 @@ import (
 
 // Setup setup the server based on configuration
 func Setup() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetOutput(os.Stdout)
+
 	iap.GetService().Initialize()
 	setupSentry()
 	setupSlackReporter()

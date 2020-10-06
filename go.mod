@@ -23,4 +23,5 @@ require (
 	github.com/getsentry/sentry-go v0.7.0
 	github.com/guregu/dynamo v1.9.1
 	github.com/multiplay/go-slack v0.0.0-20200412115802-09e9e2b93fe2
+	github.com/sirupsen/logrus v1.7.0
 )
