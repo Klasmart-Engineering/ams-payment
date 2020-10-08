@@ -22,14 +22,16 @@ func InitializeRoutes() *apirouter.Router {
 		rootRouter.AddCORSMiddleware(globals.CORSOptions)
 	}
 
-	routerV1 := createLambdaRouterV1()
-
+	routerV1 := createRouterV1()
 	rootRouter.AddRouter("v1", routerV1)
+
+	routerV2 := createRouterV2()
+	rootRouter.AddRouter("v2", routerV2)
 
 	return rootRouter
 }
 
-func createLambdaRouterV1() *apirouter.Router {
+func createRouterV1() *apirouter.Router {
 	authMiddleware := authmiddlewares.ValidateSession(globals.AccessTokenValidator, true)
 
 	router := apirouter.NewRouter()
@@ -54,6 +56,28 @@ func createLambdaRouterV1() *apirouter.Router {
 	paypalRouter.AddMiddleware(authMiddleware) // Validates the user session
 	paypalRouter.AddMethodHandler("POST", "payment", HandlePayPalPayment)
 	router.AddRouter("paypal", paypalRouter)
+
+	return router
+}
+
+func createRouterV2() *apirouter.Router {
+	authMiddleware := authmiddlewares.ValidateSession(globals.AccessTokenValidator, true)
+
+	router := apirouter.NewRouter()
+	router.AddMiddleware(authMiddleware) // Validates the user session
+
+	iapPaymentRouter := apirouter.NewRouter()
+
+	iapPaymentRouter.AddMethodHandler("POST", "android", v2HandlerProcessReceiptIos)
+	iapPaymentRouter.AddMethodHandler("POST", "ios", v2HandlerProcessReceiptIos)
+
+	debugRouter := apirouter.NewRouter()
+
+	debugRouter.AddMethodHandler("POST", "ios", v2HandlerDebugReceiptIos)
+
+	iapPaymentRouter.AddRouter("debug", debugRouter)
+
+	router.AddRouter("iap", iapPaymentRouter)
 
 	return router
 }
