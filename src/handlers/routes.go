@@ -73,6 +73,7 @@ func createRouterV2() *apirouter.Router {
 
 	debugRouter := apirouter.NewRouter()
 
+	debugRouter.AddMethodHandler("POST", "android", v2HandlerDebugReceiptAndroid)
 	debugRouter.AddMethodHandler("POST", "ios", v2HandlerDebugReceiptIos)
 
 	iapPaymentRouter.AddRouter("debug", debugRouter)

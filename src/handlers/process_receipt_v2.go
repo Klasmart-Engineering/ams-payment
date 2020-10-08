@@ -18,10 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type v2ReceiptIosResponseBody struct {
-	Message string `json:"message"`
-}
-
 type v2ReceiptIosRequestBody struct {
 	IsSubscription bool   `json:"isSubscription"`
 	BundleID       string `json:"bundleId"`
@@ -31,9 +27,7 @@ type v2ReceiptIosRequestBody struct {
 
 // findIosInAppInfoWithTransactionID attempts to find a product purchase with a specific transaction ID.
 func findIosInAppInfoWithTransactionID(inApps *[]appstore.InApp, transactionID string) *appstore.InApp {
-
 	for _, inApp := range *inApps {
-
 		if inApp.TransactionID == transactionID {
 			return &inApp
 		}
