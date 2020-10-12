@@ -84,9 +84,14 @@ func v2HandlerDebugReceiptAndroid(ctx context.Context, req *apirequests.Request,
 	}
 
 	receipt := textutils.SanitizeMultiLineString(reqBody.Receipt)
+	signature := textutils.SanitizeString(reqBody.Signature)
 
 	if len(receipt) == 0 {
 		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
+	}
+
+	if len(signature) == 0 {
+		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("signature"))
 	}
 
 	var objReceipt iap.PlayStoreReceiptJSON
@@ -96,7 +101,7 @@ func v2HandlerDebugReceiptAndroid(ctx context.Context, req *apirequests.Request,
 		return resp.SetServerError(err)
 	}
 
-	isValid, err := playstore.VerifySignature(iap.GetService().GetAndroidPublicKey(objReceipt.PackageName), []byte(reqBody.Receipt), reqBody.Signature)
+	isValid, err := playstore.VerifySignature(iap.GetService().GetAndroidPublicKey(objReceipt.PackageName), []byte(reqBody.Receipt), signature)
 
 	if err != nil {
 		return resp.SetServerError(err)

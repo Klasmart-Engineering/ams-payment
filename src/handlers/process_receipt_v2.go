@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
@@ -14,6 +16,7 @@ import (
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
 
 	"github.com/awa/go-iap/appstore"
+	"github.com/awa/go-iap/playstore"
 	"github.com/calmisland/go-errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -35,8 +38,6 @@ func findIosInAppInfoWithTransactionID(inApps *[]appstore.InApp, transactionID s
 
 	return nil
 }
-
-// v2HandlerProcessReceiptIos handles receipt process requests.
 
 // v2HandlerProcessReceiptIos handles receipt process requests.
 func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
@@ -199,5 +200,148 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 	}
 
 	logFormat(contextLogger, "[IAPPROCESSRECEIPT] Successfully processed transaction [%s] for store [apple], store product [%s] and account [%s].", transactionID, storeProductID, accountID)
+	return nil
+}
+
+type v2ReceiptAndroidRequestBody struct {
+	Receipt   string `json:"receipt"`
+	Signature string `json:"signature"`
+}
+
+// v2HandlerProcessReceiptAndroid handles receipt process requests.
+func v2HandlerProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
+	// Parse the request body
+	var reqBody v2ReceiptDebugAndroidRequestBody
+	err := req.UnmarshalBody(&reqBody)
+	if err != nil {
+		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+	}
+
+	receipt := textutils.SanitizeMultiLineString(reqBody.Receipt)
+	signature := textutils.SanitizeString(reqBody.Signature)
+
+	if len(receipt) == 0 {
+		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
+	}
+
+	if len(signature) == 0 {
+		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("signature"))
+	}
+
+	var objReceipt iap.PlayStoreReceiptJSON
+	err = json.Unmarshal([]byte(reqBody.Receipt), &objReceipt)
+
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+
+	accountID := req.Session.Data.AccountID
+
+	transactionID := objReceipt.OrderID
+
+	var transactionCode services.TransactionCode
+	transactionCode.Store = "apple"
+	transactionCode.ID = objReceipt.OrderID
+
+	contextLogger := log.WithFields(log.Fields{
+		"method":        "v2HandlerProcessReceiptIos",
+		"accountID":     accountID,
+		"transactionID": objReceipt.OrderID,
+	})
+
+	contextLogger.Info(reqBody)
+
+	publicKey, hasAppPublicKey := iap.GetService().AndroidPublicKeys[objReceipt.PackageName]
+
+	if !hasAppPublicKey {
+		errMessage := fmt.Sprintf("Failed to verify Google Play Store receipt for unsupported application: %s", objReceipt.PackageName)
+		logFormat(contextLogger, errMessage)
+		return resp.SetClientError(apierrors.ErrorIAPReceiptUnauthorized)
+	}
+
+	isValid, err := playstore.VerifySignature(publicKey, []byte(reqBody.Receipt), signature)
+
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+
+	if !isValid {
+		logFormat(contextLogger, "The Google Play Store receipt is not valid (signature fail)")
+		return resp.SetClientError(apierrors.ErrorIAPReceiptUnauthorized)
+	}
+
+	productPurchase := objReceipt
+
+	// Validating transaction
+	transaction, err := globals.TransactionService.GetTransactionByTransactionCode(&transactionCode)
+	if err != nil {
+		return resp.SetServerError(err)
+	} else if transaction != nil {
+		if transaction.AccountID == accountID {
+			logFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] has already been processed by the same account [%s].", transactionID, accountID)
+			return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
+		}
+
+		logFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] requested for account [%s] has already been processed by another account [%s].", transactionID, accountID, transaction.AccountID)
+		return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessed)
+	}
+
+	storeProductID := productPurchase.ProductID
+	storeProducts, err := globals.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
+	if err != nil {
+		return resp.SetServerError(err)
+	} else if len(storeProducts) == 0 {
+		logFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] and store product [%s] isn't available for sale.", transactionID, storeProductID)
+		return resp.SetClientError(apierrors.ErrorIAPProductNotForSale)
+	}
+
+	productType := storeproducts.StoreProductTypeDefault
+	passItems := []*services.PassItem{}
+	productItems := []*productaccessservice.ProductAccessVOItem{}
+
+	timeNow := timeutils.EpochMSNow()
+	for _, product := range storeProducts {
+		if productType == storeproducts.StoreProductTypeDefault {
+			productType = product.Type
+		} else if productType != product.Type {
+			return resp.SetServerError(errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID))
+		}
+
+		if product.Type == storeproducts.StoreProductTypePass {
+			passInfo, err := globals.PassService.GetPassVOByPassID(product.ItemID)
+			if err != nil {
+				return resp.SetServerError(err)
+			} else if passInfo == nil {
+				return resp.SetServerError(errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
+			}
+
+			passItems = append(passItems, &services.PassItem{
+				PassID:    passInfo.PassID,
+				Price:     passInfo.Price,
+				Currency:  passInfo.Currency,
+				StartDate: timeNow,
+				Duration:  passInfo.Duration,
+			})
+		} else if product.Type == storeproducts.StoreProductTypeProduct {
+			productItems = append(productItems, &productaccessservice.ProductAccessVOItem{
+				ProductID: product.ItemID,
+				StartDate: timeNow,
+			})
+		}
+	}
+
+	if productType == storeproducts.StoreProductTypeProduct {
+		err = globals.TransactionService.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
+		if err != nil {
+			return resp.SetServerError(err)
+		}
+	} else if productType == storeproducts.StoreProductTypePass {
+		err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
+		if err != nil {
+			return resp.SetServerError(err)
+		}
+	}
+
+	logFormat(contextLogger, "[IAPPROCESSRECEIPT] Successfully processed transaction [%s] for store [android], store product [%s] and account [%s].", transactionID, storeProductID, accountID)
 	return nil
 }
