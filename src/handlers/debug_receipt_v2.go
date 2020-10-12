@@ -65,7 +65,8 @@ func v2HandlerDebugReceiptIos(ctx context.Context, req *apirequests.Request, res
 }
 
 type v2ReceiptDebugAndroidRequestBody struct {
-	Receipt string `json:"receipt"`
+	Receipt   string `json:"receipt"`
+	Signature string `json:"signature"`
 }
 
 type v2ReceiptDebugAndroidResponseBody struct {
@@ -84,41 +85,25 @@ func v2HandlerDebugReceiptAndroid(ctx context.Context, req *apirequests.Request,
 
 	receipt := textutils.SanitizeMultiLineString(reqBody.Receipt)
 
-	// fmt.Println(reqBody.IsSubscription)
-
 	if len(receipt) == 0 {
 		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
 	}
 
-	var objReceipt iap.PlayStoreReceipt
-	err = json.Unmarshal([]byte(receipt), &objReceipt)
+	var objReceipt iap.PlayStoreReceiptJSON
+	err = json.Unmarshal([]byte(reqBody.Receipt), &objReceipt)
 
 	if err != nil {
 		return resp.SetServerError(err)
 	}
 
-	var payload iap.PlayStoreReceiptPayload
-	err = json.Unmarshal([]byte(objReceipt.Payload), &payload)
-
-	if err != nil {
-		return resp.SetServerError(err)
-	}
-
-	var objJSON iap.PlayStoreReceiptJSON
-	err = json.Unmarshal([]byte(payload.JSON), &objJSON)
-
-	if err != nil {
-		return resp.SetServerError(err)
-	}
-
-	isValid, err := playstore.VerifySignature(iap.GetService().GetAndroidPublicKey(objJSON.PackageName), []byte(payload.JSON), payload.Signature)
+	isValid, err := playstore.VerifySignature(iap.GetService().GetAndroidPublicKey(objReceipt.PackageName), []byte(reqBody.Receipt), reqBody.Signature)
 
 	if err != nil {
 		return resp.SetServerError(err)
 	}
 	var respBody v2ReceiptDebugAndroidResponseBody = v2ReceiptDebugAndroidResponseBody{
 		IsValid:     isValid,
-		ReceiptInfo: objJSON,
+		ReceiptInfo: objReceipt,
 	}
 
 	resp.SetBody(&respBody)
