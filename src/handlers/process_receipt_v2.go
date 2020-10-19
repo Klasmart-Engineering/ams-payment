@@ -22,10 +22,9 @@ import (
 )
 
 type v2ReceiptIosRequestBody struct {
-	IsSubscription bool   `json:"isSubscription"`
-	BundleID       string `json:"bundleId"`
-	TransactionID  string `json:"transactionId"`
-	Receipt        string `json:"receipt"`
+	BundleID      string `json:"bundleId"`
+	TransactionID string `json:"transactionId"`
+	Receipt       string `json:"receipt"`
 }
 
 // findIosInAppInfoWithTransactionID attempts to find a product purchase with a specific transaction ID.
@@ -83,16 +82,14 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 
 	iapClient := appstore.New()
 
-	iapReq := appstore.IAPRequest{
-		ReceiptData: receipt,
+	password, hasSharedKey := iap.GetService().IosSharedSecrects[bundleID]
+	if hasSharedKey == false {
+		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("bundleID").WithMessage("No Shared Key"))
 	}
 
-	if reqBody.IsSubscription {
-		password, hasSharedKey := iap.GetService().IosSharedSecrects[bundleID]
-		if !hasSharedKey {
-			return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("bundleID").WithMessage("No Shared Key"))
-		}
-		iapReq.Password = password
+	iapReq := appstore.IAPRequest{
+		ReceiptData: receipt,
+		Password:    password,
 	}
 
 	iapResp := &appstore.IAPResponse{}
