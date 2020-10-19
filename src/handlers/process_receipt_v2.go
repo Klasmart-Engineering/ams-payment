@@ -88,9 +88,11 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 	}
 
 	if reqBody.IsSubscription {
-		password := iap.GetService().GetIosSharedKey(bundleID)
+		password, hasSharedKey := iap.GetService().IosSharedSecrects[bundleID]
+		if !hasSharedKey {
+			return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("bundleID").WithMessage("No Shared Key"))
+		}
 		iapReq.Password = password
-		// fmt.Println(password)
 	}
 
 	iapResp := &appstore.IAPResponse{}
@@ -244,7 +246,7 @@ func v2HandlerProcessReceiptAndroid(ctx context.Context, req *apirequests.Reques
 	transactionCode.ID = objReceipt.OrderID
 
 	contextLogger := log.WithFields(log.Fields{
-		"method":        "v2HandlerProcessReceiptIos",
+		"method":        "v2HandlerProcessReceiptAndroid",
 		"accountID":     accountID,
 		"transactionID": objReceipt.OrderID,
 	})
