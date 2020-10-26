@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/multiplay/go-slack/chat"
 	"github.com/multiplay/go-slack/webhook"
@@ -27,7 +28,9 @@ func (slackMessageService *SlackMessageService) SendMessage(message string) {
 // SendMessageFormat send a format message to channel
 func (slackMessageService *SlackMessageService) SendMessageFormat(format string, args ...interface{}) {
 	c := webhook.New(slackMessageService.WebHookURL)
-	text := fmt.Sprintf(format, args...)
+
+	text := fmt.Sprintf("[%s] "+format, os.Getenv("SERVER_STAGE"), args)
+
 	m := &chat.Message{Text: text}
 	m.Send(c)
 }

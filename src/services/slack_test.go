@@ -19,4 +19,5 @@ func TestSlackMessage(t *testing.T) {
 	jsonObj.Set("test", "accountId")
 
 	globals.PaymentSlackMessageService.SendMessage(jsonObj.String())
+	globals.PaymentSlackMessageService.SendMessageFormat("with Env %d", 100)
 }
