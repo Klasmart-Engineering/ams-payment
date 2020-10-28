@@ -29,7 +29,8 @@ func (slackMessageService *SlackMessageService) SendMessage(message string) {
 func (slackMessageService *SlackMessageService) SendMessageFormat(format string, args ...interface{}) {
 	c := webhook.New(slackMessageService.WebHookURL)
 
-	text := fmt.Sprintf("[%s] "+format, os.Getenv("SERVER_STAGE"), args)
+	text := fmt.Sprintf("[%s] ", os.Getenv("SERVER_STAGE"))
+	text += fmt.Sprintf(format, args...)
 
 	m := &chat.Message{Text: text}
 	m.Send(c)
