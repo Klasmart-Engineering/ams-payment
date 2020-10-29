@@ -2,6 +2,9 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -71,6 +74,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	transactionCode.ID = transactionID
 
 	contextLogger := log.WithFields(log.Fields{
+		"paymentMethod": "InApp: " + storeID + " - v1",
 		"accountID":     accountID,
 		"transactionID": transactionID,
 	})
@@ -196,5 +200,16 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 
 func logFormat(contextLogger *log.Entry, format string, args ...interface{}) {
 	contextLogger.Infof(format, args...)
-	globals.PaymentSlackMessageService.SendMessageFormat(format, args...)
+
+	jsonMap := contextLogger.Data
+	jsonMap["env"] = os.Getenv("SERVER_STAGE")
+	jsonMap["message"] = fmt.Sprintf(format, args...)
+
+	jsonObj, err := json.Marshal(jsonMap)
+
+	if err != nil {
+		contextLogger.Errorf("JSON marshalling process failure for a slack message")
+	}
+
+	globals.PaymentSlackMessageService.SendMessage(string(jsonObj))
 }

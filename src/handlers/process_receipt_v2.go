@@ -73,7 +73,7 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 	transactionCode.ID = transactionID
 
 	contextLogger := log.WithFields(log.Fields{
-		"method":        "v2HandlerProcessReceiptIos",
+		"paymentMethod": "InApp: apple - v2",
 		"accountID":     accountID,
 		"transactionID": transactionID,
 	})
@@ -239,15 +239,14 @@ func v2HandlerProcessReceiptAndroid(ctx context.Context, req *apirequests.Reques
 	transactionID := objReceipt.OrderID
 
 	var transactionCode services.TransactionCode
-	transactionCode.Store = "apple"
+	transactionCode.Store = "googlePlay"
 	transactionCode.ID = objReceipt.OrderID
 
 	contextLogger := log.WithFields(log.Fields{
-		"method":        "v2HandlerProcessReceiptAndroid",
+		"paymentMethod": "InApp: googlePlay - v2",
 		"accountID":     accountID,
-		"transactionID": objReceipt.OrderID,
+		"transactionID": transactionID,
 	})
-
 	contextLogger.Info(reqBody)
 
 	publicKey, hasAppPublicKey := iap.GetService().AndroidPublicKeys[objReceipt.PackageName]
