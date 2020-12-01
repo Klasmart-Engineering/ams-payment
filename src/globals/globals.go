@@ -13,7 +13,8 @@ import (
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/src/services/v2"
 	"github.com/calmisland/go-errors"
 )
 
@@ -28,7 +29,8 @@ var (
 	// ProductDatabase is the product database.
 	ProductDatabase productdatabase.Database
 	// TransactionService aids with payments processing
-	TransactionService *services.TransactionStandardService
+	TransactionService   *services.TransactionStandardService
+	TransactionServiceV2 *services_v2.TransactionStandardService
 	// ProductAccessService allows use of the product database
 	ProductAccessService *productaccessservice.StandardProductAccessService
 	// PassAccessService allows use of the product database
@@ -79,6 +81,9 @@ func Verify() {
 		panic(errors.New("The pass service has not been set"))
 	}
 	if TransactionService == nil {
+		panic(errors.New("The transcation service has not been set"))
+	}
+	if TransactionServiceV2 == nil {
 		panic(errors.New("The transcation service has not been set"))
 	}
 	if StoreProductService == nil {

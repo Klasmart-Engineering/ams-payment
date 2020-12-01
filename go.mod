@@ -12,7 +12,7 @@ require (
 	bitbucket.org/calmisland/go-server-iap v0.3.5
 	bitbucket.org/calmisland/go-server-logs v1.2.2
 	bitbucket.org/calmisland/go-server-messages v1.2.3
-	bitbucket.org/calmisland/go-server-product v1.12.0
+	bitbucket.org/calmisland/go-server-product v1.16.3
 	bitbucket.org/calmisland/go-server-requests v1.20.1
 	bitbucket.org/calmisland/go-server-utils v1.9.1
 	github.com/Jeffail/gabs/v2 v2.6.0

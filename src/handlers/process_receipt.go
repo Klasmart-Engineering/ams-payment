@@ -19,7 +19,7 @@ import (
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
 	"github.com/calmisland/go-errors"
 )
 

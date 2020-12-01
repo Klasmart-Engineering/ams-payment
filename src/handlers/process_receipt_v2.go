@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
@@ -13,7 +14,7 @@ import (
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/iap"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/src/services/v2"
 
 	"github.com/awa/go-iap/appstore"
 	"github.com/awa/go-iap/playstore"
@@ -68,7 +69,7 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 
 	accountID := req.Session.Data.AccountID
 
-	var transactionCode services.TransactionCode
+	var transactionCode services_v2.TransactionCode
 	transactionCode.Store = "apple"
 	transactionCode.ID = transactionID
 
@@ -129,7 +130,7 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 	}
 
 	// Validating transaction
-	transaction, err := globals.TransactionService.GetTransactionByTransactionCode(&transactionCode)
+	transaction, err := globals.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if transaction != nil {
@@ -152,7 +153,7 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 	}
 
 	productType := storeproducts.StoreProductTypeDefault
-	passItems := []*services.PassItem{}
+	passItems := []*services_v2.PassItem{}
 	productItems := []*productaccessservice.ProductAccessVOItem{}
 
 	timeNow := timeutils.EpochMSNow()
@@ -171,12 +172,18 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 				return resp.SetServerError(errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
 			}
 
-			passItems = append(passItems, &services.PassItem{
-				PassID:    passInfo.PassID,
-				Price:     passInfo.Price,
-				Currency:  passInfo.Currency,
-				StartDate: timeNow,
-				Duration:  passInfo.Duration,
+			expireDateMS, err := strconv.Atoi(productPurchase.ExpiresDateMS)
+
+			if err != nil {
+				return resp.SetServerError(err)
+			}
+
+			passItems = append(passItems, &services_v2.PassItem{
+				PassID:        passInfo.PassID,
+				Price:         passInfo.Price,
+				Currency:      passInfo.Currency,
+				StartDate:     timeNow,
+				ExpiresDateMS: timeutils.EpochTimeMS(expireDateMS),
 			})
 		} else if product.Type == storeproducts.StoreProductTypeProduct {
 			productItems = append(productItems, &productaccessservice.ProductAccessVOItem{
@@ -187,12 +194,12 @@ func v2HandlerProcessReceiptIos(ctx context.Context, req *apirequests.Request, r
 	}
 
 	if productType == storeproducts.StoreProductTypeProduct {
-		err = globals.TransactionService.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
+		err = globals.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
-		err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
+		err = globals.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}
@@ -238,7 +245,7 @@ func v2HandlerProcessReceiptAndroid(ctx context.Context, req *apirequests.Reques
 
 	transactionID := objReceipt.OrderID
 
-	var transactionCode services.TransactionCode
+	var transactionCode services_v2.TransactionCode
 	transactionCode.Store = "googlePlay"
 	transactionCode.ID = objReceipt.OrderID
 
@@ -271,7 +278,7 @@ func v2HandlerProcessReceiptAndroid(ctx context.Context, req *apirequests.Reques
 	productPurchase := objReceipt
 
 	// Validating transaction
-	transaction, err := globals.TransactionService.GetTransactionByTransactionCode(&transactionCode)
+	transaction, err := globals.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if transaction != nil {
@@ -294,7 +301,7 @@ func v2HandlerProcessReceiptAndroid(ctx context.Context, req *apirequests.Reques
 	}
 
 	productType := storeproducts.StoreProductTypeDefault
-	passItems := []*services.PassItem{}
+	passItems := []*services_v2.PassItem{}
 	productItems := []*productaccessservice.ProductAccessVOItem{}
 
 	timeNow := timeutils.EpochMSNow()
@@ -313,12 +320,12 @@ func v2HandlerProcessReceiptAndroid(ctx context.Context, req *apirequests.Reques
 				return resp.SetServerError(errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
 			}
 
-			passItems = append(passItems, &services.PassItem{
-				PassID:    passInfo.PassID,
-				Price:     passInfo.Price,
-				Currency:  passInfo.Currency,
-				StartDate: timeNow,
-				Duration:  passInfo.Duration,
+			passItems = append(passItems, &services_v2.PassItem{
+				PassID:        passInfo.PassID,
+				Price:         passInfo.Price,
+				Currency:      passInfo.Currency,
+				StartDate:     timeNow,
+				ExpiresDateMS: timeNow + 10000, // TODO: fix this value
 			})
 		} else if product.Type == storeproducts.StoreProductTypeProduct {
 			productItems = append(productItems, &productaccessservice.ProductAccessVOItem{
@@ -329,12 +336,12 @@ func v2HandlerProcessReceiptAndroid(ctx context.Context, req *apirequests.Reques
 	}
 
 	if productType == storeproducts.StoreProductTypeProduct {
-		err = globals.TransactionService.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
+		err = globals.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
-		err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
+		err = globals.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}

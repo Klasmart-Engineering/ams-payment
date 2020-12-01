@@ -16,7 +16,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/sessions"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens/accesstokensmock"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
 	"github.com/calmisland/go-testify/mock"
 )
 

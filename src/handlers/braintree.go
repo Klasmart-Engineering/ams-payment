@@ -17,7 +17,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
 )
 
 func HandleBraintreeToken(_ context.Context, req *apirequests.Request, resp *apirequests.Response) error {
