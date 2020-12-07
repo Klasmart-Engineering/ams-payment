@@ -11,7 +11,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/apiservers/httpserver"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/handlers"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/routes"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/setup/globalsetup"
 )
 
@@ -22,7 +22,7 @@ func main() {
 	}
 
 	globalsetup.Setup()
-	rootRouter := handlers.InitializeRoutes()
+	rootRouter := routes.InitializeRoutes()
 	initLambdaDevFunctions(rootRouter)
 
 	restServer := &httpserver.Server{

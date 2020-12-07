@@ -33,12 +33,6 @@ type ITransactionService interface {
 
 	// SaveTransactionUnlockProducts save the transaction as pendingSettlement and add the associated products accesses
 	SaveTransactionUnlockProducts(accountID string, transactionCode *TransactionCode, items []*productaccessservice.ProductAccessVOItem) error
-
-	// SettleTransactionByReceipt updates the transaction to settled
-	SettleTransactionByTransactionCode(transactionCode *TransactionCode) error
-
-	// ReverseTransactionByReceipt updates the transaction to reversed and remove transaction related accesses
-	ReverseTransactionByTransactionCode(transactionCode *TransactionCode) error
 }
 
 type TransactionCode struct {
@@ -159,7 +153,6 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 	// Create Pass accesses
 	passAccessVOList := make([]*passaccessservice.PassAccessVO, len(items))
 	for i, item := range items {
-
 		passAccessVOList[i] = &passaccessservice.PassAccessVO{
 			AccountID:      accountID,
 			PassID:         item.PassID,
@@ -217,78 +210,6 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockProdu
 	}
 
 	return transactionService.ProductAccessService.CreateOrUpdateProductAccessVOListByTransaction(accountID, transactionID, items)
-}
-
-// SettleTransactionByReceipt updates the transaction to settled
-func (transactionService *TransactionStandardService) SettleTransactionByTransactionCode(transactionCode *TransactionCode) error {
-	transactionID, err := buildTransactionIDFromTransactionCode(transactionCode)
-	if err != nil {
-		return err
-	}
-
-	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
-	if err != nil {
-		return err
-	} else if accTransactionInfo == nil {
-		return errors.New(apierrors.ErrorPaymentTransactionNotFound.String())
-	}
-
-	return transactionService.AccountDatabase.UpdateAccountTransaction(&accountdatabase.UpdateAccountTransactionInfo{
-		AccountID:     accTransactionInfo.AccountID,
-		TransactionID: accTransactionInfo.TransactionID,
-		State:         transactions.Settled,
-	})
-}
-
-// ReverseTransactionByReceipt updates the transaction to reversed and remove transaction related accesses
-func (transactionService *TransactionStandardService) ReverseTransactionByTransactionCode(transactionCode *TransactionCode) error {
-	transactionID, err := buildTransactionIDFromTransactionCode(transactionCode)
-	if err != nil {
-		return err
-	}
-
-	accTransactionInfo, err := transactionService.AccountDatabase.GetAccountTransactionInfoByTransactionID(transactionID)
-	if err != nil {
-		return err
-	} else if accTransactionInfo == nil {
-		return errors.New(apierrors.ErrorPaymentTransactionNotFound.String())
-	}
-
-	// Update the state of the transaction
-	err = transactionService.AccountDatabase.UpdateAccountTransaction(&accountdatabase.UpdateAccountTransactionInfo{
-		AccountID:        accTransactionInfo.AccountID,
-		TransactionID:    accTransactionInfo.TransactionID,
-		State:            transactions.Reversed,
-		CancellationDate: accTransactionInfo.CancellationDate,
-	})
-	if err != nil {
-		return err
-	}
-
-	// Delete the passes accesses provided by the transaction, if any
-	if len(accTransactionInfo.Passes) > 0 {
-		passIDs := make([]string, 0, len(accTransactionInfo.Passes))
-		for passID, _ := range accTransactionInfo.Passes {
-			passIDs = append(passIDs, passID)
-		}
-		err = transactionService.PassAccessService.DeletePassAccesses(accTransactionInfo.AccountID, passIDs)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Delete the products accesses provided by the transaction, if any
-	if len(accTransactionInfo.Products) > 0 {
-		productIDs := make([]string, 0, len(accTransactionInfo.Products))
-		for productID, _ := range accTransactionInfo.Products {
-			productIDs = append(productIDs, productID)
-		}
-		err = transactionService.ProductAccessService.DeleteProductAccesses(accTransactionInfo.AccountID, productIDs)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func buildTransactionIDFromTransactionCode(transactionCode *TransactionCode) (string, error) {

@@ -1,10 +1,12 @@
-package handlers
+package routes
 
 import (
 	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/standardhandlers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/handlers"
+	"bitbucket.org/calmisland/payment-lambda-funcs/src/handlers2"
 )
 
 var (
@@ -39,22 +41,22 @@ func createRouterV1() *apirouter.Router {
 
 	// router.AddMiddleware(authMiddleware) // Validates the user session
 
-	router.AddMethodHandler("GET", "history", HandleGetReceipts, authMiddleware)
+	router.AddMethodHandler("GET", "history", handlers.HandleGetReceipts, authMiddleware)
 
 	iapPaymentRouter := apirouter.NewRouter()
 	iapPaymentRouter.AddMiddleware(authMiddleware) // Validates the user session
-	iapPaymentRouter.AddMethodHandler("POST", "receipt", HandleProcessReceipt)
+	iapPaymentRouter.AddMethodHandler("POST", "receipt", handlers.HandleProcessReceipt)
 	router.AddRouter("iap", iapPaymentRouter)
 
 	braintreeRouter := apirouter.NewRouter()
 	braintreeRouter.AddMiddleware(authMiddleware) // Validates the user session
-	braintreeRouter.AddMethodHandler("GET", "token", HandleBraintreeToken)
-	braintreeRouter.AddMethodHandler("POST", "payment", HandleBraintreePayment)
+	braintreeRouter.AddMethodHandler("GET", "token", handlers.HandleBraintreeToken)
+	braintreeRouter.AddMethodHandler("POST", "payment", handlers.HandleBraintreePayment)
 	router.AddRouter("braintree", braintreeRouter)
 
 	paypalRouter := apirouter.NewRouter()
 	paypalRouter.AddMiddleware(authMiddleware) // Validates the user session
-	paypalRouter.AddMethodHandler("POST", "payment", HandlePayPalPayment)
+	paypalRouter.AddMethodHandler("POST", "payment", handlers.HandlePayPalPayment)
 	router.AddRouter("paypal", paypalRouter)
 
 	return router
@@ -68,13 +70,13 @@ func createRouterV2() *apirouter.Router {
 
 	iapPaymentRouter := apirouter.NewRouter()
 
-	iapPaymentRouter.AddMethodHandler("POST", "android", v2HandlerProcessReceiptAndroid)
-	iapPaymentRouter.AddMethodHandler("POST", "ios", v2HandlerProcessReceiptIos)
+	iapPaymentRouter.AddMethodHandler("POST", "android", handlers2.ProcessReceiptAndroid)
+	iapPaymentRouter.AddMethodHandler("POST", "ios", handlers2.ProcessReceiptIos)
 
 	debugRouter := apirouter.NewRouter()
 
-	debugRouter.AddMethodHandler("POST", "android", v2HandlerDebugReceiptAndroid)
-	debugRouter.AddMethodHandler("POST", "ios", v2HandlerDebugReceiptIos)
+	debugRouter.AddMethodHandler("POST", "android", handlers2.DebugReceiptAndroid)
+	debugRouter.AddMethodHandler("POST", "ios", handlers2.DebugReceiptIos)
 
 	iapPaymentRouter.AddRouter("debug", debugRouter)
 
