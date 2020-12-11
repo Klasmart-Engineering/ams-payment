@@ -1,28 +1,27 @@
-// +build !lambda
-
 package main
 
 import (
 	"context"
+	"fmt"
 
 	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-configs/configs"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/apiservers/httpserver"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/routes"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/setup/globalsetup"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/router"
 )
 
 func main() {
+	fmt.Println("hello world")
 	err := configs.UpdateConfigDirectoryPath(configs.DefaultConfigFolderName)
 	if err != nil {
 		panic(err)
 	}
 
-	globalsetup.Setup()
-	rootRouter := routes.InitializeRoutes()
+	global.Setup()
+	rootRouter := router.InitializeRoutes()
 	initLambdaDevFunctions(rootRouter)
 
 	restServer := &httpserver.Server{
@@ -38,7 +37,7 @@ func main() {
 }
 
 func initLambdaDevFunctions(rootRouter *apirouter.Router) {
-	authMiddleware := authmiddlewares.ValidateSession(globals.AccessTokenValidator, true)
+	authMiddleware := authmiddlewares.ValidateSession(global.AccessTokenValidator, true)
 	devRouter := apirouter.NewRouter()
 	devRouter.AddMiddleware(authMiddleware) // Validates the user session
 
@@ -48,7 +47,7 @@ func initLambdaDevFunctions(rootRouter *apirouter.Router) {
 }
 
 func createTablesRequest(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
-	err := globals.AccountDatabase.CreateDatabaseTables()
+	err := global.AccountDatabase.CreateDatabaseTables()
 	if err != nil {
 		return resp.SetServerError(err)
 	}

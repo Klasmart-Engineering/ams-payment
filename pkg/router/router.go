@@ -1,12 +1,12 @@
-package routes
+package router
 
 import (
 	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/standardhandlers"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/handlers"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/handlers2"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/handler"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/handler2"
 )
 
 var (
@@ -20,8 +20,8 @@ func InitializeRoutes() *apirouter.Router {
 	}
 
 	rootRouter = apirouter.NewRouter()
-	if globals.CORSOptions != nil {
-		rootRouter.AddCORSMiddleware(globals.CORSOptions)
+	if global.CORSOptions != nil {
+		rootRouter.AddCORSMiddleware(global.CORSOptions)
 	}
 
 	routerV1 := createRouterV1()
@@ -34,7 +34,7 @@ func InitializeRoutes() *apirouter.Router {
 }
 
 func createRouterV1() *apirouter.Router {
-	authMiddleware := authmiddlewares.ValidateSession(globals.AccessTokenValidator, true)
+	authMiddleware := authmiddlewares.ValidateSession(global.AccessTokenValidator, true)
 
 	router := apirouter.NewRouter()
 	router.AddMethodHandler("GET", "serverinfo", standardhandlers.HandleServerInfo)
@@ -63,7 +63,7 @@ func createRouterV1() *apirouter.Router {
 }
 
 func createRouterV2() *apirouter.Router {
-	authMiddleware := authmiddlewares.ValidateSession(globals.AccessTokenValidator, true)
+	authMiddleware := authmiddlewares.ValidateSession(global.AccessTokenValidator, true)
 
 	router := apirouter.NewRouter()
 	router.AddMiddleware(authMiddleware) // Validates the user session

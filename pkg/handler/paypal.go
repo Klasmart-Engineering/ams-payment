@@ -17,8 +17,8 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
 )
 
 type paypalPaymentRequestBody struct {
@@ -44,7 +44,7 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 
 	contextLogger.Info(reqBody)
 
-	passVO, err := globals.PassService.GetPassVOByPassID(reqBody.ProductCode)
+	passVO, err := global.PassService.GetPassVOByPassID(reqBody.ProductCode)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if passVO == nil {
@@ -79,7 +79,7 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 		Store: transactions.PayPal,
 		ID:    reqBody.OrderID,
 	}
-	err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, []*services.PassItem{item})
+	err = global.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, []*services.PassItem{item})
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on SaveTransactionUnlockPasses")
@@ -87,7 +87,7 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	}
 
 	// Send an email once a pass is unlocked
-	accountInfo, err := globals.AccountDatabase.GetAccountInfo(accountID)
+	accountInfo, err := global.AccountDatabase.GetAccountInfo(accountID)
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on GetAccountInfo")
@@ -110,7 +110,7 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 			ExpirationDate: fmt.Sprintf("%d/%d/%d", endPassValidityDate.Time().Year(), endPassValidityDate.Time().Month(), endPassValidityDate.Time().Day()),
 		},
 	}
-	err = globals.MessageSendQueue.EnqueueMessage(emailMessage)
+	err = global.MessageSendQueue.EnqueueMessage(emailMessage)
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on EnqueueMessage to send an email")
@@ -163,5 +163,5 @@ func invokePaypalLambda(payload []byte) (*cloudfunctions.FunctionInvokeOutput, e
 		IsDryRun: false,
 		Payload:  payload,
 	}
-	return globals.PayPalPaymentFunction.Invoke(&invokeInput)
+	return global.PayPalPaymentFunction.Invoke(&invokeInput)
 }

@@ -7,7 +7,7 @@ import (
 	"bitbucket.org/calmisland/go-server-product/passes"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
 )
 
 type getTransactionsResponse struct {
@@ -41,7 +41,7 @@ type transactionProductResponse struct {
 
 func HandleGetReceipts(_ context.Context, req *apirequests.Request, resp *apirequests.Response) error {
 	accountID := req.Session.Data.AccountID
-	transactionVOList, err := globals.TransactionService.GetTransactionHistory(accountID)
+	transactionVOList, err := global.TransactionService.GetTransactionHistory(accountID)
 	if err != nil {
 		return err
 	}

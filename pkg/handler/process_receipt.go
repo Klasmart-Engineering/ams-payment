@@ -18,8 +18,8 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
 	"github.com/calmisland/go-errors"
 )
 
@@ -84,10 +84,10 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	var receiptValidator receiptvalidator.Validator
 	if IsReceiptToGooglePlay(storeID) {
 		transactionCode.Store = transactions.GooglePlay
-		receiptValidator = globals.GooglePlayReceiptValidator
+		receiptValidator = global.GooglePlayReceiptValidator
 	} else if IsReceiptToAppleStore(storeID) {
 		transactionCode.Store = transactions.Apple
-		receiptValidator = globals.AppleAppStoreReceiptValidator
+		receiptValidator = global.AppleAppStoreReceiptValidator
 	} else {
 		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("storeId"))
 	}
@@ -125,7 +125,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	}
 
 	// Validating transaction
-	transaction, err := globals.TransactionService.GetTransactionByTransactionCode(&transactionCode)
+	transaction, err := global.TransactionService.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if transaction != nil {
@@ -139,7 +139,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	}
 
 	storeProductID := productPurchase.ProductID
-	storeProducts, err := globals.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
+	storeProducts, err := global.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if len(storeProducts) == 0 {
@@ -160,7 +160,7 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 		}
 
 		if product.Type == storeproducts.StoreProductTypePass {
-			passInfo, err := globals.PassService.GetPassVOByPassID(product.ItemID)
+			passInfo, err := global.PassService.GetPassVOByPassID(product.ItemID)
 			if err != nil {
 				return resp.SetServerError(err)
 			} else if passInfo == nil {
@@ -183,12 +183,12 @@ func HandleProcessReceipt(ctx context.Context, req *apirequests.Request, resp *a
 	}
 
 	if productType == storeproducts.StoreProductTypeProduct {
-		err = globals.TransactionService.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
+		err = global.TransactionService.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
-		err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
+		err = global.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}
@@ -211,5 +211,5 @@ func logFormat(contextLogger *log.Entry, format string, args ...interface{}) {
 		contextLogger.Errorf("JSON marshalling process failure for a slack message")
 	}
 
-	globals.PaymentSlackMessageService.SendMessage(string(jsonObj))
+	global.PaymentSlackMessageService.SendMessage(string(jsonObj))
 }

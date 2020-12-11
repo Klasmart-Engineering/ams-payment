@@ -1,4 +1,4 @@
-package globals
+package global
 
 import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
@@ -13,8 +13,8 @@ import (
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/src/services/v2"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
 	"github.com/calmisland/go-errors"
 )
 

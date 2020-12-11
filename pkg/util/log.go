@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,5 +22,5 @@ func LogFormat(contextLogger *log.Entry, format string, args ...interface{}) {
 		contextLogger.Errorf("JSON marshalling process failure for a slack message")
 	}
 
-	globals.PaymentSlackMessageService.SendMessage(string(jsonObj))
+	global.PaymentSlackMessageService.SendMessage(string(jsonObj))
 }

@@ -10,10 +10,10 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/iap"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/src/services/v2"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/utils"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/util"
 	"github.com/awa/go-iap/appstore"
 	"github.com/calmisland/go-errors"
 	log "github.com/sirupsen/logrus"
@@ -110,13 +110,18 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 
 	productPurchase := findIosInAppInfoWithTransactionID(&iapResp.Receipt.InApp, transactionID)
 
+	contextLogger.WithFields(log.Fields{
+		"IsTrialPeriod":        productPurchase.IsTrialPeriod,
+		"ExpiresDateFormatted": productPurchase.ExpiresDateFormatted,
+	})
+
 	if productPurchase == nil {
 		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Unable to find transaction [%s] in receipt for store [apple]", transactionID)
 		return resp.SetClientError(apierrors.ErrorIAPReceiptTransactionNotFound)
 	}
 
 	// Validating transaction
-	transaction, err := globals.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
+	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if transaction != nil {
@@ -130,7 +135,7 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 	}
 
 	storeProductID := productPurchase.ProductID
-	storeProducts, err := globals.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
+	storeProducts, err := global.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if len(storeProducts) == 0 {
@@ -152,7 +157,7 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 		}
 
 		if product.Type == storeproducts.StoreProductTypePass {
-			passInfo, err := globals.PassService.GetPassVOByPassID(product.ItemID)
+			passInfo, err := global.PassService.GetPassVOByPassID(product.ItemID)
 			contextLogger.Info(passInfo)
 			if err != nil {
 				return resp.SetServerError(err)
@@ -189,12 +194,12 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 	}
 
 	if productType == storeproducts.StoreProductTypeProduct {
-		err = globals.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
+		err = global.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
-		err = globals.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
+		err = global.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
 		if err != nil {
 			return resp.SetServerError(err)
 		}

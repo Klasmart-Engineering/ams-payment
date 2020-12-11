@@ -1,4 +1,4 @@
-package services_v2
+package service2
 
 import (
 	"fmt"

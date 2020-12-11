@@ -3,8 +3,8 @@ package test_test
 import (
 	"testing"
 
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/handlers"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/setup/testsetup"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/handler"
+	"bitbucket.org/calmisland/payment-lambda-funcs/test/legacy"
 	"bitbucket.org/calmisland/go-server-api/openapi/openapi3"
 	"bitbucket.org/calmisland/go-server-logs/logger"
 )

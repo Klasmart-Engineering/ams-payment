@@ -1,6 +1,6 @@
 module bitbucket.org/calmisland/payment-lambda-funcs
 
-go 1.12
+go 1.15
 
 require (
 	bitbucket.org/calmisland/go-server-account v1.13.3

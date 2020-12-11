@@ -1,4 +1,4 @@
-package testsetup
+package test
 
 import (
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
@@ -15,8 +15,8 @@ import (
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/sessions"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens/accesstokensmock"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
 	"github.com/calmisland/go-testify/mock"
 )
 
@@ -34,18 +34,18 @@ func Setup() {
 
 	setupMessageQueue()
 
-	globals.Verify()
+	global.Verify()
 }
 
 func setupAccountDatabase() accountdatabase.Database {
 	accountDatabase := accountmemorydb.New()
-	globals.AccountDatabase = accountDatabase
+	global.AccountDatabase = accountDatabase
 	return accountDatabase
 }
 
 func setupProductDatabase() productdatabase.Database {
 	productDatabase := productmemorydb.New()
-	globals.ProductDatabase = productDatabase
+	global.ProductDatabase = productDatabase
 	return productDatabase
 }
 
@@ -75,12 +75,12 @@ func setupServices(accountDatabase accountdatabase.Database, productDatabase pro
 		ProductDatabase: productDatabase,
 	}
 
-	globals.ProductAccessService = productAccessService
-	globals.PassAccessService = passAccessService
-	globals.TransactionService = transactionService
-	globals.PassService = passService
-	globals.ProductService = productService
-	globals.StoreProductService = storeProductService
+	global.ProductAccessService = productAccessService
+	global.PassAccessService = passAccessService
+	global.TransactionService = transactionService
+	global.PassService = passService
+	global.ProductService = productService
+	global.StoreProductService = storeProductService
 }
 
 func setupAccessTokenSystems() {
@@ -91,15 +91,15 @@ func setupAccessTokenSystems() {
 		DeviceID:  "TEST-DEVICE",
 	}, nil)
 
-	globals.AccessTokenValidator = accessTokenValidator
+	global.AccessTokenValidator = accessTokenValidator
 }
 
 func setupGooglePlayReceiptValidator() {
-	globals.GooglePlayReceiptValidator = nil
+	global.GooglePlayReceiptValidator = nil
 }
 
 func setupAppleStoreReceiptValidator() {
-	globals.AppleAppStoreReceiptValidator = nil
+	global.AppleAppStoreReceiptValidator = nil
 }
 
 func setupBraintreePaymentLambda() {
@@ -108,7 +108,7 @@ func setupBraintreePaymentLambda() {
 		Payload: []byte("{}"),
 		IsError: false,
 	}, nil)
-	globals.BraintreePaymentFunction = mockfn
+	global.BraintreePaymentFunction = mockfn
 }
 
 func setupPaypalPaymentLambda() {
@@ -117,11 +117,11 @@ func setupPaypalPaymentLambda() {
 		Payload: []byte("{}"),
 		IsError: false,
 	}, nil)
-	globals.PayPalPaymentFunction = mockfn
+	global.PayPalPaymentFunction = mockfn
 }
 
 func setupMessageQueue() {
 	messageSendQueue := &sendmessagequeuemock.QueueMock{}
 	messageSendQueue.On("EnqueueMessage", mock.Anything).Return(nil)
-	globals.MessageSendQueue = messageSendQueue
+	global.MessageSendQueue = messageSendQueue
 }

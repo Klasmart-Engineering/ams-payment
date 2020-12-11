@@ -1,4 +1,4 @@
-package globalsetup
+package global
 
 import (
 	"errors"
@@ -27,10 +27,9 @@ import (
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/iap"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/src/services/v2"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -59,7 +58,7 @@ func Setup() {
 
 	setupMessageQueue()
 
-	globals.Verify()
+	Verify()
 }
 
 func setupSentry() {
@@ -83,7 +82,7 @@ func SetupSlackMessageService() {
 		panic(err)
 	}
 
-	globals.PaymentSlackMessageService = &services.SlackMessageService{WebHookURL: config.PaymentChannel}
+	PaymentSlackMessageService = &services.SlackMessageService{WebHookURL: config.PaymentChannel}
 
 }
 
@@ -104,7 +103,7 @@ func setupAccountDatabase() accountdatabase.Database {
 		panic(err)
 	}
 
-	globals.AccountDatabase = accountDatabase
+	AccountDatabase = accountDatabase
 	return accountDatabase
 }
 
@@ -125,7 +124,7 @@ func setupProductDatabase() *productdynamodb.Database {
 		panic(err)
 	}
 
-	globals.ProductDatabase = productDatabase
+	ProductDatabase = productDatabase
 	return productDatabase
 }
 
@@ -163,13 +162,13 @@ func setupServices(accountDatabase accountdatabase.Database, productDatabase pro
 		ProductDatabase: productDatabase,
 	}
 
-	globals.ProductAccessService = productAccessService
-	globals.PassAccessService = passAccessService
-	globals.TransactionService = transactionService
-	globals.TransactionServiceV2 = transactionServiceV2
-	globals.PassService = passService
-	globals.ProductService = productService
-	globals.StoreProductService = storeProductService
+	ProductAccessService = productAccessService
+	PassAccessService = passAccessService
+	TransactionService = transactionService
+	TransactionServiceV2 = transactionServiceV2
+	PassService = passService
+	ProductService = productService
+	StoreProductService = storeProductService
 }
 
 func setupAccessTokenSystems() {
@@ -183,7 +182,7 @@ func setupAccessTokenSystems() {
 
 	validatorConfig.PublicKey = string(bPublicKey)
 
-	globals.AccessTokenValidator, err = accesstokens.NewValidator(validatorConfig)
+	AccessTokenValidator, err = accesstokens.NewValidator(validatorConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -200,12 +199,12 @@ func setupGooglePlayReceiptValidator() {
 	googlePlayValidatorConfig.AppPublicKeys = iap.GetService().AndroidPublicKeys
 
 	if len(googlePlayValidatorConfig.JSONKey) > 0 || len(googlePlayValidatorConfig.JSONKeyFile) > 0 {
-		globals.GooglePlayReceiptValidator, err = googleplaystorereceipts.NewReceiptValidator(googlePlayValidatorConfig)
+		GooglePlayReceiptValidator, err = googleplaystorereceipts.NewReceiptValidator(googlePlayValidatorConfig)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		globals.GooglePlayReceiptValidator = nil
+		GooglePlayReceiptValidator = nil
 		panic("Failed to generate Google Play Receipt validator")
 	}
 
@@ -219,12 +218,12 @@ func setupAppleStoreReceiptValidator() {
 	}
 
 	if len(appleStoreValidatorConfig.Password) > 0 {
-		globals.AppleAppStoreReceiptValidator, err = appleappstorereceipts.NewReceiptValidator(appleStoreValidatorConfig)
+		AppleAppStoreReceiptValidator, err = appleappstorereceipts.NewReceiptValidator(appleStoreValidatorConfig)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		globals.AppleAppStoreReceiptValidator = nil
+		AppleAppStoreReceiptValidator = nil
 	}
 }
 
@@ -235,7 +234,7 @@ func setupCORS() {
 		panic(err)
 	}
 
-	globals.CORSOptions = &corsConfig
+	CORSOptions = &corsConfig
 }
 
 func setupSlackReporter() {
@@ -266,7 +265,7 @@ func setupBraintreePaymentLambda() {
 		panic(err)
 	}
 
-	globals.BraintreePaymentFunction, err = awslambda.NewFunction(&braintreePaymentLambdaConfig)
+	BraintreePaymentFunction, err = awslambda.NewFunction(&braintreePaymentLambdaConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -280,7 +279,7 @@ func setupPaypalPaymentLambda() {
 		panic(err)
 	}
 
-	globals.PayPalPaymentFunction, err = awslambda.NewFunction(&paypalPaymentLambdaConfig)
+	PayPalPaymentFunction, err = awslambda.NewFunction(&paypalPaymentLambdaConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -298,7 +297,7 @@ func setupMessageQueue() {
 		panic(err)
 	}
 
-	globals.MessageSendQueue, err = sendmessagequeue.New(sendmessagequeue.QueueConfig{
+	MessageSendQueue, err = sendmessagequeue.New(sendmessagequeue.QueueConfig{
 		Queue: messageSendQueue,
 	})
 	if err != nil {

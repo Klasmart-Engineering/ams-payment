@@ -7,7 +7,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/iap"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
 	"github.com/awa/go-iap/playstore"
 )
 

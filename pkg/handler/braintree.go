@@ -16,8 +16,8 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/globals"
-	"bitbucket.org/calmisland/payment-lambda-funcs/src/services/v1"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
 )
 
 func HandleBraintreeToken(_ context.Context, req *apirequests.Request, resp *apirequests.Response) error {
@@ -64,7 +64,7 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 
 	accountID := req.Session.Data.AccountID
 
-	passVO, err := globals.PassService.GetPassVOByPassID(reqBody.ProductCode)
+	passVO, err := global.PassService.GetPassVOByPassID(reqBody.ProductCode)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if passVO == nil {
@@ -91,13 +91,13 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 		Store: transactions.BrainTree,
 		ID:    response.TransactionId,
 	}
-	err = globals.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, []*services.PassItem{item})
+	err = global.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, []*services.PassItem{item})
 	if err != nil {
 		return resp.SetServerError(err)
 	}
 
 	// Send an email once a pass is unlocked
-	accountInfo, err := globals.AccountDatabase.GetAccountInfo(accountID)
+	accountInfo, err := global.AccountDatabase.GetAccountInfo(accountID)
 	if err != nil {
 		return resp.SetServerError(err)
 	} else if accountInfo == nil {
@@ -117,7 +117,7 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 			ExpirationDate: fmt.Sprintf("%d/%d/%d", endPassValidityDate.Time().Year(), endPassValidityDate.Time().Month(), endPassValidityDate.Time().Day()),
 		},
 	}
-	err = globals.MessageSendQueue.EnqueueMessage(emailMessage)
+	err = global.MessageSendQueue.EnqueueMessage(emailMessage)
 	if err != nil {
 		return resp.SetServerError(err)
 	}
@@ -171,5 +171,5 @@ func invokeBraintreeLambda(payload []byte) (*cloudfunctions.FunctionInvokeOutput
 		IsDryRun: false,
 		Payload:  payload,
 	}
-	return globals.BraintreePaymentFunction.Invoke(&invokeInput)
+	return global.BraintreePaymentFunction.Invoke(&invokeInput)
 }
