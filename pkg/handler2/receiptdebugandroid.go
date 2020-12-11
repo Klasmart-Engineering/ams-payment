@@ -59,14 +59,13 @@ func DebugReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *ap
 
 	subscriptionInfo, err := subscription.GetSubscriptionInformation(objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
 
-	if err != nil {
-		return resp.SetServerError(err)
+	var respBody debugReceiptAndroidResponseBody = debugReceiptAndroidResponseBody{
+		IsValid:     isValid,
+		ReceiptInfo: objReceipt,
 	}
 
-	var respBody debugReceiptAndroidResponseBody = debugReceiptAndroidResponseBody{
-		IsValid:          isValid,
-		ReceiptInfo:      objReceipt,
-		SubscriptionInfo: *subscriptionInfo,
+	if err == nil {
+		respBody.SubscriptionInfo = *subscriptionInfo
 	}
 
 	resp.SetBody(&respBody)

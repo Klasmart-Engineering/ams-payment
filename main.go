@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-configs/configs"
@@ -14,7 +13,6 @@ import (
 )
 
 func main() {
-	fmt.Println("hello world")
 	err := configs.UpdateConfigDirectoryPath(configs.DefaultConfigFolderName)
 	if err != nil {
 		panic(err)

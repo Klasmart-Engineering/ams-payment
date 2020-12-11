@@ -89,10 +89,25 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 
 	productPurchase := objReceipt
 
+	timeNow := timeutils.EpochMSNow()
+
 	subscriptionInfo, err := subscription.GetSubscriptionInformation(objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
 
-	if err != nil {
-		return resp.SetServerError(err)
+	foundSubscriptionInfo := err == nil
+
+	contextLogger = contextLogger.WithFields(log.Fields{
+		"foundSubscriptionInfo": foundSubscriptionInfo,
+	})
+
+	if foundSubscriptionInfo {
+		timeNow = timeutils.EpochTimeMS(subscriptionInfo.StartTimeMillis)
+		contextLogger = contextLogger.WithFields(log.Fields{
+			"OrderId": subscriptionInfo.OrderId,
+		})
+
+		transactionCode.ID = subscriptionInfo.OrderId
+
+		contextLogger.Info(subscriptionInfo)
 	}
 
 	// Validating transaction
@@ -122,8 +137,6 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 	passItems := []*services_v2.PassItem{}
 	productItems := []*productaccessservice.ProductAccessVOItem{}
 
-	timeNow := subscriptionInfo.StartTimeMillis
-
 	for _, product := range storeProducts {
 		if productType == storeproducts.StoreProductTypeDefault {
 			productType = product.Type
@@ -133,18 +146,25 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 
 		if product.Type == storeproducts.StoreProductTypePass {
 			passInfo, err := global.PassService.GetPassVOByPassID(product.ItemID)
+
 			if err != nil {
 				return resp.SetServerError(err)
 			} else if passInfo == nil {
 				return resp.SetServerError(errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
 			}
 
+			expiredTime := timeNow + timeutils.EpochTimeMS(passInfo.DurationMS)
+
+			if foundSubscriptionInfo {
+				expiredTime = timeutils.EpochTimeMS(subscriptionInfo.ExpiryTimeMillis)
+			}
+
 			passItems = append(passItems, &services_v2.PassItem{
 				PassID:        passInfo.PassID,
 				Price:         passInfo.Price,
 				Currency:      passInfo.Currency,
-				StartDate:     timeutils.EpochTimeMS(timeNow),
-				ExpiresDateMS: timeutils.EpochTimeMS(subscriptionInfo.ExpiryTimeMillis),
+				StartDate:     timeNow,
+				ExpiresDateMS: expiredTime,
 			})
 			contextLogger.Info(passItems)
 		} else if product.Type == storeproducts.StoreProductTypeProduct {

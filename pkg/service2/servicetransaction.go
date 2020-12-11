@@ -122,21 +122,21 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 		return err
 	}
 
-	existingPassAccessVOList, err := transactionService.PassAccessService.GetPassAccessVOListByAccountID(accountID)
-	if err != nil {
-		return err
-	}
+	// existingPassAccessVOList, err := transactionService.PassAccessService.GetPassAccessVOListByAccountID(accountID)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Check if all pass are not already active
 	passIds := make([]string, len(items))
 	for i, item := range items {
 		passIds[i] = item.PassID
-		for _, passAccessVO := range existingPassAccessVOList {
-			if item.PassID == passAccessVO.PassID {
-				// Cumulate Pass forbidden
-				return errors.New(apierrors.ErrorPaymentPassAccessAlreadyExist.String())
-			}
-		}
+		// for _, passAccessVO := range existingPassAccessVOList {
+		// if item.PassID == passAccessVO.PassID {
+		// 	// Cumulate Pass forbidden
+		// 	return errors.New(apierrors.ErrorPaymentPassAccessAlreadyExist.String())
+		// }
+		// }
 	}
 
 	// Create the account transaction
