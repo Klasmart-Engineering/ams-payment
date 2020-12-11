@@ -13,9 +13,9 @@ import (
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
+	subscription "bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap/android"
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/util"
-
+	utils "bitbucket.org/calmisland/payment-lambda-funcs/pkg/util"
 	"github.com/awa/go-iap/playstore"
 	"github.com/calmisland/go-errors"
 	log "github.com/sirupsen/logrus"
@@ -89,6 +89,12 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 
 	productPurchase := objReceipt
 
+	subscriptionInfo, err := subscription.GetSubscriptionInformation(objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
+
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+
 	// Validating transaction
 	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
@@ -116,7 +122,8 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 	passItems := []*services_v2.PassItem{}
 	productItems := []*productaccessservice.ProductAccessVOItem{}
 
-	timeNow := timeutils.EpochMSNow()
+	timeNow := subscriptionInfo.StartTimeMillis
+
 	for _, product := range storeProducts {
 		if productType == storeproducts.StoreProductTypeDefault {
 			productType = product.Type
@@ -136,13 +143,14 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 				PassID:        passInfo.PassID,
 				Price:         passInfo.Price,
 				Currency:      passInfo.Currency,
-				StartDate:     timeNow,
-				ExpiresDateMS: timeNow + 10000, // TODO: fix this value
+				StartDate:     timeutils.EpochTimeMS(timeNow),
+				ExpiresDateMS: timeutils.EpochTimeMS(subscriptionInfo.ExpiryTimeMillis),
 			})
+			contextLogger.Info(passItems)
 		} else if product.Type == storeproducts.StoreProductTypeProduct {
 			productItems = append(productItems, &productaccessservice.ProductAccessVOItem{
 				ProductID: product.ItemID,
-				StartDate: timeNow,
+				StartDate: timeutils.EpochTimeMS(timeNow),
 			})
 		}
 	}

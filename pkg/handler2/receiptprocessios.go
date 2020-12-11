@@ -13,7 +13,7 @@ import (
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/util"
+	utils "bitbucket.org/calmisland/payment-lambda-funcs/pkg/util"
 	"github.com/awa/go-iap/appstore"
 	"github.com/calmisland/go-errors"
 	log "github.com/sirupsen/logrus"
