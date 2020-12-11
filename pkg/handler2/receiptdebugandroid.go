@@ -8,7 +8,9 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
+	subscription "bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap/android"
 	"github.com/awa/go-iap/playstore"
+	"google.golang.org/api/androidpublisher/v3"
 )
 
 type debugReceiptAndroidRequestBody struct {
@@ -17,8 +19,9 @@ type debugReceiptAndroidRequestBody struct {
 }
 
 type debugReceiptAndroidResponseBody struct {
-	IsValid     bool                     `json:"isValid"`
-	ReceiptInfo iap.PlayStoreReceiptJSON `json:"receiptInfo"`
+	IsValid          bool                                  `json:"isValid"`
+	ReceiptInfo      iap.PlayStoreReceiptJSON              `json:"receiptInfo"`
+	SubscriptionInfo androidpublisher.SubscriptionPurchase `json:"subscriptionInfo"`
 }
 
 // DebugReceiptAndroid handles receipt process requests.
@@ -53,9 +56,17 @@ func DebugReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *ap
 	if err != nil {
 		return resp.SetServerError(err)
 	}
+
+	subscriptionInfo, err := subscription.GetSubscriptionInformation(objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
+
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+
 	var respBody debugReceiptAndroidResponseBody = debugReceiptAndroidResponseBody{
-		IsValid:     isValid,
-		ReceiptInfo: objReceipt,
+		IsValid:          isValid,
+		ReceiptInfo:      objReceipt,
+		SubscriptionInfo: *subscriptionInfo,
 	}
 
 	resp.SetBody(&respBody)
