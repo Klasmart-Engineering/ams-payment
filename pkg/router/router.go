@@ -5,8 +5,8 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/standardhandlers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/handler"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/handler2"
+	handlers "bitbucket.org/calmisland/payment-lambda-funcs/pkg/handler"
+	handlers2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/handler2"
 )
 
 var (
@@ -75,7 +75,12 @@ func createRouterV2() *apirouter.Router {
 
 	debugRouter := apirouter.NewRouter()
 
-	debugRouter.AddMethodHandler("POST", "android", handlers2.DebugReceiptAndroid)
+	androidDebugRouter := apirouter.NewRouter()
+	androidDebugRouter.AddMethodHandler("POST", "product", handlers2.DebugReceiptAndroidProduct)
+	androidDebugRouter.AddMethodHandler("POST", "subscription", handlers2.DebugReceiptAndroidSubscription)
+
+	debugRouter.AddRouter("android", androidDebugRouter)
+
 	debugRouter.AddMethodHandler("POST", "ios", handlers2.DebugReceiptIos)
 
 	iapPaymentRouter.AddRouter("debug", debugRouter)

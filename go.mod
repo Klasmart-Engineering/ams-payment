@@ -24,6 +24,5 @@ require (
 	github.com/guregu/dynamo v1.9.1
 	github.com/multiplay/go-slack v0.0.0-20200412115802-09e9e2b93fe2
 	github.com/sirupsen/logrus v1.7.0
-	golang.org/x/oauth2 v0.0.0-20190523182746-aaccbc9213b0
 	google.golang.org/api v0.5.1-0.20190526001144-9f3a303b451f
 )

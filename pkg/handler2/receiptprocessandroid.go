@@ -2,8 +2,10 @@ package handlers2
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
@@ -13,7 +15,6 @@ import (
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
-	subscription "bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap/android"
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
 	utils "bitbucket.org/calmisland/payment-lambda-funcs/pkg/util"
 	"github.com/awa/go-iap/playstore"
@@ -89,9 +90,35 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 
 	productPurchase := objReceipt
 
+	// Validating transaction
+	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
+	if err != nil {
+		return resp.SetServerError(err)
+	} else if transaction != nil {
+		if transaction.AccountID == accountID {
+			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] has already been processed by the same account [%s].", transactionID, accountID)
+			return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
+		}
+
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] requested for account [%s] has already been processed by another account [%s].", transactionID, accountID, transaction.AccountID)
+		return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessed)
+	}
+
 	timeNow := timeutils.EpochMSNow()
 
-	subscriptionInfo, err := subscription.GetSubscriptionInformation(objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
+	jsonKeyBase64 := os.Getenv("GOOGLE_PLAYSTORE_JSON_KEY")
+	jsonKeyStr, err := base64.StdEncoding.DecodeString(jsonKeyBase64)
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+	jsonKey := []byte(jsonKeyStr)
+
+	client, err := playstore.New(jsonKey)
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+
+	subscriptionInfo, err := client.VerifySubscription(ctx, objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
 
 	foundSubscriptionInfo := err == nil
 
@@ -108,20 +135,6 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 		transactionCode.ID = subscriptionInfo.OrderId
 
 		contextLogger.Info(subscriptionInfo)
-	}
-
-	// Validating transaction
-	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
-	if err != nil {
-		return resp.SetServerError(err)
-	} else if transaction != nil {
-		if transaction.AccountID == accountID {
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] has already been processed by the same account [%s].", transactionID, accountID)
-			return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
-		}
-
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] requested for account [%s] has already been processed by another account [%s].", transactionID, accountID, transaction.AccountID)
-		return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessed)
 	}
 
 	storeProductID := productPurchase.ProductID

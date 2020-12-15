@@ -2,32 +2,33 @@ package handlers2
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"os"
 
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
-	subscription "bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap/android"
 	"github.com/awa/go-iap/playstore"
 	"google.golang.org/api/androidpublisher/v3"
 )
 
-type debugReceiptAndroidRequestBody struct {
+type debugReceiptAndroidSubscriptionRequestBody struct {
 	Receipt   string `json:"receipt"`
 	Signature string `json:"signature"`
 }
 
-type debugReceiptAndroidResponseBody struct {
+type debugReceiptAndroidSubscriptionResponseBody struct {
 	IsValid          bool                                  `json:"isValid"`
 	ReceiptInfo      iap.PlayStoreReceiptJSON              `json:"receiptInfo"`
 	SubscriptionInfo androidpublisher.SubscriptionPurchase `json:"subscriptionInfo"`
 }
 
-// DebugReceiptAndroid handles receipt process requests.
-func DebugReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
+// DebugReceiptAndroidSubscription handles receipt process requests.
+func DebugReceiptAndroidSubscription(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
 	// Parse the request body
-	var reqBody debugReceiptAndroidRequestBody
+	var reqBody debugReceiptAndroidSubscriptionRequestBody
 	err := req.UnmarshalBody(&reqBody)
 	if err != nil {
 		return resp.SetClientError(apierrors.ErrorBadRequestBody)
@@ -57,9 +58,25 @@ func DebugReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *ap
 		return resp.SetServerError(err)
 	}
 
-	subscriptionInfo, err := subscription.GetSubscriptionInformation(objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
+	jsonKeyBase64 := os.Getenv("GOOGLE_PLAYSTORE_JSON_KEY")
+	jsonKeyStr, err := base64.StdEncoding.DecodeString(jsonKeyBase64)
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+	jsonKey := []byte(jsonKeyStr)
 
-	var respBody debugReceiptAndroidResponseBody = debugReceiptAndroidResponseBody{
+	client, err := playstore.New(jsonKey)
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+
+	subscriptionInfo, err := client.VerifySubscription(ctx, objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
+
+	if err != nil {
+		return resp.SetServerError(err)
+	}
+
+	var respBody debugReceiptAndroidSubscriptionResponseBody = debugReceiptAndroidSubscriptionResponseBody{
 		IsValid:     isValid,
 		ReceiptInfo: objReceipt,
 	}
