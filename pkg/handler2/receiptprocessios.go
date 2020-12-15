@@ -110,9 +110,9 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 
 	productPurchase := findIosInAppInfoWithTransactionID(&iapResp.Receipt.InApp, transactionID)
 
-	contextLogger.WithFields(log.Fields{
-		"IsTrialPeriod":        productPurchase.IsTrialPeriod,
-		"ExpiresDateFormatted": productPurchase.ExpiresDateFormatted,
+	contextLogger = contextLogger.WithFields(log.Fields{
+		"IsTrialPeriod": productPurchase.IsTrialPeriod,
+		"ExpiresDateMS": productPurchase.ExpiresDateMS,
 	})
 
 	if productPurchase == nil {
