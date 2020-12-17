@@ -1,6 +1,11 @@
 package iap
 
-import "fmt"
+import (
+	"fmt"
+
+	androidService "bitbucket.org/calmisland/go-server-iap-platform/android"
+	iosService "bitbucket.org/calmisland/go-server-iap-platform/ios"
+)
 
 // Service ...
 type Service struct {
@@ -25,7 +30,7 @@ func GetService() *Service {
 
 // Initialize ..
 func (service *Service) Initialize() error {
-	androidList, err := GetAndroidList()
+	androidList, err := androidService.GetService().GetAndroidList()
 
 	if err != nil {
 		return fmt.Errorf("could not load android information from db: %w", err)
@@ -36,7 +41,7 @@ func (service *Service) Initialize() error {
 		// fmt.Printf("%s - %s \n", v.ApplicationID, v.PublicKey)
 	}
 
-	iosList, err := GetIosList()
+	iosList, err := iosService.GetService().GetIosList()
 
 	if err != nil {
 		return fmt.Errorf("could not load ios information from db: %w", err)
