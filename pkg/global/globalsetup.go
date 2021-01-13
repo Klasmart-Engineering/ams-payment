@@ -28,7 +28,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
+	services "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
 
 	"github.com/getsentry/sentry-go"
@@ -63,7 +63,6 @@ func Setup() {
 
 func setupSentry() {
 	var env string = fmt.Sprintf("%s@%s", os.Getenv("SERVER_STAGE"), os.Getenv("SERVER_REGION"))
-	fmt.Println(env)
 	err := sentry.Init(sentry.ClientOptions{
 		Dsn:         "https://f8d1fc600ed24b4581f7d2d5ea37aecb@o412774.ingest.sentry.io/5413073",
 		Environment: env,
@@ -77,7 +76,7 @@ func setupSentry() {
 func SetupSlackMessageService() {
 	var config services.SlackConfig
 
-	err := configs.LoadConfig("slack", &config, true)
+	err := configs.ReadEnvConfig(&config)
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +87,7 @@ func SetupSlackMessageService() {
 
 func setupAccountDatabase() accountdatabase.Database {
 	var accountDatabaseConfig awsdynamodb.ClientConfig
-	err := configs.LoadConfig("account_database_dynamodb", &accountDatabaseConfig, true)
+	err := configs.ReadEnvConfig(&accountDatabaseConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -109,7 +108,7 @@ func setupAccountDatabase() accountdatabase.Database {
 
 func setupProductDatabase() *productdynamodb.Database {
 	var productDatabaseConfig awsdynamodb.ClientConfig
-	err := configs.LoadConfig("product_database_dynamodb", &productDatabaseConfig, true)
+	err := configs.ReadEnvConfig(&productDatabaseConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -190,8 +189,7 @@ func setupAccessTokenSystems() {
 
 func setupGooglePlayReceiptValidator() {
 	var googlePlayValidatorConfig googleplaystorereceipts.ReceiptValidatorConfig
-	err := configs.LoadConfig("googleplay_receipt_validator", &googlePlayValidatorConfig, false)
-
+	err := configs.ReadEnvConfig(&googlePlayValidatorConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -212,7 +210,7 @@ func setupGooglePlayReceiptValidator() {
 
 func setupAppleStoreReceiptValidator() {
 	var appleStoreValidatorConfig appleappstorereceipts.ReceiptValidatorConfig
-	err := configs.LoadConfig("applestore_receipt_validator", &appleStoreValidatorConfig, false)
+	err := configs.ReadEnvConfig(&appleStoreValidatorConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -239,7 +237,7 @@ func setupCORS() {
 
 func setupSlackReporter() {
 	var slackReporterConfig slackreporter.Config
-	err := configs.LoadConfig("error_reporter_slack", &slackReporterConfig, false)
+	err := configs.ReadEnvConfig(&slackReporterConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -259,8 +257,7 @@ func setupSlackReporter() {
 
 func setupBraintreePaymentLambda() {
 	var braintreePaymentLambdaConfig awslambda.FunctionConfig
-	var err error
-	err = configs.LoadConfig("braintree_payment_func_lambda", &braintreePaymentLambdaConfig, true)
+	err := configs.ReadEnvConfig(&braintreePaymentLambdaConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -273,8 +270,7 @@ func setupBraintreePaymentLambda() {
 
 func setupPaypalPaymentLambda() {
 	var paypalPaymentLambdaConfig awslambda.FunctionConfig
-	var err error
-	err = configs.LoadConfig("paypal_payment_func_lambda", &paypalPaymentLambdaConfig, true)
+	err := configs.ReadEnvConfig(&paypalPaymentLambdaConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -287,7 +283,7 @@ func setupPaypalPaymentLambda() {
 
 func setupMessageQueue() {
 	var queueConfig awssqs.QueueConfig
-	err := configs.LoadConfig("message_send_sqs", &queueConfig, true)
+	err := configs.ReadEnvConfig(&queueConfig)
 	if err != nil {
 		panic(err)
 	}
