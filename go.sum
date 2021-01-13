@@ -72,6 +72,8 @@ bitbucket.org/calmisland/go-server-utils v1.7.0/go.mod h1:5icb47nXPo2GH++D+2DSYn
 bitbucket.org/calmisland/go-server-utils v1.8.0/go.mod h1:5icb47nXPo2GH++D+2DSYnzPIZrlQmQ7Pi7jA+gS2yQ=
 bitbucket.org/calmisland/go-server-utils v1.9.1 h1:P6v1rJw+e/Y5T7R5Z+xZYAaL6AGjpnH1ihz5wD4DTlc=
 bitbucket.org/calmisland/go-server-utils v1.9.1/go.mod h1:8WMeRtXNqNnQipUhQQvaQYux90/ELwL4OmuyrvABS/0=
+bitbucket.org/calmisland/go-server-utils v1.9.2 h1:f6Pt1rwC25wQ3V1wkpx2JNtf7DTYs/xqw+FgI4JB+yI=
+bitbucket.org/calmisland/go-server-utils v1.9.2/go.mod h1:8WMeRtXNqNnQipUhQQvaQYux90/ELwL4OmuyrvABS/0=
 bitbucket.org/calmisland/go-slack v0.2.1 h1:IUzk534eCdtt0vrWsHwYza46AbDZSkCpkQp0KgpsfgA=
 bitbucket.org/calmisland/go-slack v0.2.1/go.mod h1:3XswLvtaaTFyIwLQ7Cow4DCLgegWXml2YJwoco9R0g8=
 bitbucket.org/calmisland/go-slack v0.2.2 h1:T9UVyCRja47yGZuzmgdBfBfBNII3fYSoYXxHqCsTbqU=
@@ -145,6 +147,8 @@ github.com/aws/aws-sdk-go v1.35.17/go.mod h1:tlPOdRjfxPBpNIwqDj61rmsnA85v9jc0Ps9
 github.com/aws/aws-sdk-go v1.36.10/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
 github.com/aws/aws-sdk-go v1.36.24 h1:uVuio0zA5ideP3DGZDpIoExQJd0WcoNUVlNZaKwBnf8=
 github.com/aws/aws-sdk-go v1.36.24/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
+github.com/aws/aws-sdk-go v1.36.25 h1:foHwQg8LGGuR9L8IODs2co5OQqjYhNNrngefIbXbyjg=
+github.com/aws/aws-sdk-go v1.36.25/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
 github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible/go.mod h1:osfaiScAUVup+UC9Nfq76eWqDhXlp+4UYaA8uhTBO6g=
 github.com/calmisland/go-decimal v1.1.1 h1:1G79MfJG7gYtN6ZSNqm66VkU3punrmi8pT2zQUA8LtY=
 github.com/calmisland/go-decimal v1.1.1/go.mod h1:uWpOFfnuz9OELUu6XdMsoTSBIap4iOkah5VeNchvVL0=
@@ -531,6 +535,8 @@ golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43/go.mod h1:KelEdhl1UZF7XfJ
 golang.org/x/oauth2 v0.0.0-20201109201403-9fd604954f58/go.mod h1:KelEdhl1UZF7XfJ4dDtk6s++YSgaE7mD/BuKKDLBl4A=
 golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5 h1:Lm4OryKCca1vehdsWogr9N4t7NfZxLbJoc/H0w4K4S4=
 golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5/go.mod h1:KelEdhl1UZF7XfJ4dDtk6s++YSgaE7mD/BuKKDLBl4A=
+golang.org/x/oauth2 v0.0.0-20210112200429-01de73cf58bd h1:0n2rzLq6xLtV9OFaT0BF2syUkjOwRrJ1zvXY5hH7Kkc=
+golang.org/x/oauth2 v0.0.0-20210112200429-01de73cf58bd/go.mod h1:KelEdhl1UZF7XfJ4dDtk6s++YSgaE7mD/BuKKDLBl4A=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181108010431-42b317875d0f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
@@ -581,6 +587,8 @@ golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20201214095126-aec9a390925b/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210110051926-789bb1bd4061 h1:DQmQoKxQWtyybCtX/3dIuDBcAhFszqq8YiNeS6sNu1c=
 golang.org/x/sys v0.0.0-20210110051926-789bb1bd4061/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20210113000019-eaf3bda374d2 h1:F9vNgpIiamoF+Q1/c78bikg/NScXEtbZSNEpnRelOzs=
+golang.org/x/sys v0.0.0-20210113000019-eaf3bda374d2/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
