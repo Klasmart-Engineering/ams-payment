@@ -27,6 +27,7 @@ import (
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
+	"bitbucket.org/calmisland/go-server-utils/osutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
@@ -257,11 +258,12 @@ func setupSlackReporter() {
 
 func setupBraintreePaymentLambda() {
 	var braintreePaymentLambdaConfig awslambda.FunctionConfig
-	err := configs.ReadEnvConfig(&braintreePaymentLambdaConfig)
-	if err != nil {
-		panic(err)
-	}
+	braintreePaymentLambdaConfig.Region = osutils.GetOsEnvWithDef("AMS_AWS_FUNCTION_BRAINTREE_PAYMENT_REGION", "")
+	fmt.Printf("[ENV LOADED]  %s %s\n", "AMS_AWS_FUNCTION_BRAINTREE_PAYMENT_REGION", braintreePaymentLambdaConfig.Region)
+	braintreePaymentLambdaConfig.FunctionName = osutils.GetOsEnvWithDef("AMS_AWS_FUNCTION_BRAINTREE_PAYMENT_NAME", "")
+	fmt.Printf("[ENV LOADED]  %s %s\n", "AMS_AWS_FUNCTION_BRAINTREE_PAYMENT_NAME", braintreePaymentLambdaConfig.FunctionName)
 
+	var err error
 	BraintreePaymentFunction, err = awslambda.NewFunction(&braintreePaymentLambdaConfig)
 	if err != nil {
 		panic(err)
@@ -270,11 +272,12 @@ func setupBraintreePaymentLambda() {
 
 func setupPaypalPaymentLambda() {
 	var paypalPaymentLambdaConfig awslambda.FunctionConfig
-	err := configs.ReadEnvConfig(&paypalPaymentLambdaConfig)
-	if err != nil {
-		panic(err)
-	}
+	paypalPaymentLambdaConfig.Region = osutils.GetOsEnvWithDef("AMS_AWS_FUNCTION_PAYPAL_PAYMENT_REGION", "")
+	fmt.Printf("[ENV LOADED]  %s %s\n", "AMS_AWS_FUNCTION_PAYPAL_PAYMENT_REGION", paypalPaymentLambdaConfig.Region)
+	paypalPaymentLambdaConfig.FunctionName = osutils.GetOsEnvWithDef("AMS_AWS_FUNCTION_PAYPAL_PAYMENT_NAME", "")
+	fmt.Printf("[ENV LOADED]  %s %s\n", "AMS_AWS_FUNCTION_PAYPAL_PAYMENT_NAME", paypalPaymentLambdaConfig.FunctionName)
 
+	var err error
 	PayPalPaymentFunction, err = awslambda.NewFunction(&paypalPaymentLambdaConfig)
 	if err != nil {
 		panic(err)
