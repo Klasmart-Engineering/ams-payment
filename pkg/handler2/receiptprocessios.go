@@ -109,16 +109,15 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 	// fmt.Println(iapResp)
 
 	productPurchase := findIosInAppInfoWithTransactionID(&iapResp.Receipt.InApp, transactionID)
+	if productPurchase == nil {
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Unable to find transaction [%s] in receipt for store [apple]", transactionID)
+		return resp.SetClientError(apierrors.ErrorIAPReceiptTransactionNotFound)
+	}
 
 	contextLogger = contextLogger.WithFields(log.Fields{
 		"IsTrialPeriod": productPurchase.IsTrialPeriod,
 		"ExpiresDateMS": productPurchase.ExpiresDateMS,
 	})
-
-	if productPurchase == nil {
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Unable to find transaction [%s] in receipt for store [apple]", transactionID)
-		return resp.SetClientError(apierrors.ErrorIAPReceiptTransactionNotFound)
-	}
 
 	// Validating transaction
 	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
