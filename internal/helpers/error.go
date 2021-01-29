@@ -21,6 +21,8 @@ func HandleInternalError(c echo.Context, err error) error {
 	// logger.LogError(err, errorContext)
 
 	apiErr := apierrors.ErrorInternalServerError
+	errorMessage := err.Error()
+	apiErr = apiErr.WithMessage(errorMessage)
 
 	return c.JSON(apiErr.StatusCode, apiErr)
 }

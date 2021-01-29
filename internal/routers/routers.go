@@ -18,7 +18,7 @@ func SetupRouter() *echo.Echo {
 	authMiddleware := authmiddlewares.EchoAuthMiddleware(global.AccessTokenValidator, true)
 
 	// Middleware
-	e.Use(middleware.Logger())
+	// e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(sentryecho.New(sentryecho.Options{}))
 
