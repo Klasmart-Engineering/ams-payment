@@ -28,9 +28,9 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/go-server-utils/osutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
-	services "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
+	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
 
 	"github.com/getsentry/sentry-go"
 )

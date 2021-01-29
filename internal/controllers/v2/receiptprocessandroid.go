@@ -1,24 +1,25 @@
-package handlers2
+package v2
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 
+	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
-	utils "bitbucket.org/calmisland/payment-lambda-funcs/pkg/util"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	utils "bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
 	"github.com/awa/go-iap/playstore"
 	"github.com/calmisland/go-errors"
+	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,33 +29,33 @@ type processReceiptAndroidRequestBody struct {
 }
 
 // ProcessReceiptAndroid handles receipt process requests.
-func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
+func ProcessReceiptAndroid(c echo.Context) error {
+	cc := c.(*authmiddlewares.AuthContext)
+	accountID := cc.Session.Data.AccountID
 	// Parse the request body
-	var reqBody processReceiptAndroidRequestBody
-	err := req.UnmarshalBody(&reqBody)
+	reqBody := new(processReceiptAndroidRequestBody)
+	err := c.Bind(reqBody)
 	if err != nil {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 
 	receipt := textutils.SanitizeMultiLineString(reqBody.Receipt)
 	signature := textutils.SanitizeString(reqBody.Signature)
 
 	if len(receipt) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("receipt"))
 	}
 
 	if len(signature) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("signature"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("signature"))
 	}
 
 	var objReceipt iap.PlayStoreReceiptJSON
 	err = json.Unmarshal([]byte(reqBody.Receipt), &objReceipt)
 
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
-
-	accountID := req.Session.Data.AccountID
 
 	transactionID := objReceipt.OrderID
 
@@ -74,18 +75,18 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 	if !hasAppPublicKey {
 		errMessage := fmt.Sprintf("Failed to verify Google Play Store receipt for unsupported application: %s", objReceipt.PackageName)
 		utils.LogFormat(contextLogger, errMessage)
-		return resp.SetClientError(apierrors.ErrorIAPReceiptUnauthorized)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptUnauthorized)
 	}
 
 	isValid, err := playstore.VerifySignature(publicKey, []byte(reqBody.Receipt), signature)
 
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
 	if !isValid {
 		utils.LogFormat(contextLogger, "The Google Play Store receipt is not valid (signature fail)")
-		return resp.SetClientError(apierrors.ErrorIAPReceiptUnauthorized)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptUnauthorized)
 	}
 
 	productPurchase := objReceipt
@@ -93,15 +94,15 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 	// Validating transaction
 	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	} else if transaction != nil {
 		if transaction.AccountID == accountID {
 			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] has already been processed by the same account [%s].", transactionID, accountID)
-			return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
+			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
 		}
 
 		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] requested for account [%s] has already been processed by another account [%s].", transactionID, accountID, transaction.AccountID)
-		return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessed)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessed)
 	}
 
 	timeNow := timeutils.EpochMSNow()
@@ -109,16 +110,16 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 	jsonKeyBase64 := os.Getenv("GOOGLE_PLAYSTORE_JSON_KEY")
 	jsonKeyStr, err := base64.StdEncoding.DecodeString(jsonKeyBase64)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 	jsonKey := []byte(jsonKeyStr)
 
 	client, err := playstore.New(jsonKey)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
-	subscriptionInfo, err := client.VerifySubscription(ctx, objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
+	subscriptionInfo, err := client.VerifySubscription(c.Request().Context(), objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
 
 	foundSubscriptionInfo := err == nil
 
@@ -140,10 +141,10 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 	storeProductID := productPurchase.ProductID
 	storeProducts, err := global.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	} else if len(storeProducts) == 0 {
 		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] and store product [%s] isn't available for sale.", transactionID, storeProductID)
-		return resp.SetClientError(apierrors.ErrorIAPProductNotForSale)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPProductNotForSale)
 	}
 
 	productType := storeproducts.StoreProductTypeDefault
@@ -154,16 +155,16 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 		if productType == storeproducts.StoreProductTypeDefault {
 			productType = product.Type
 		} else if productType != product.Type {
-			return resp.SetServerError(errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID))
+			return errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID)
 		}
 
 		if product.Type == storeproducts.StoreProductTypePass {
 			passInfo, err := global.PassService.GetPassVOByPassID(product.ItemID)
 
 			if err != nil {
-				return resp.SetServerError(err)
+				return err
 			} else if passInfo == nil {
-				return resp.SetServerError(errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
+				return errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID)
 			}
 
 			expiredTime := timeNow + timeutils.EpochTimeMS(passInfo.DurationMS)
@@ -191,12 +192,12 @@ func ProcessReceiptAndroid(ctx context.Context, req *apirequests.Request, resp *
 	if productType == storeproducts.StoreProductTypeProduct {
 		err = global.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
 		if err != nil {
-			return resp.SetServerError(err)
+			return err
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
 		err = global.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
 		if err != nil {
-			return resp.SetServerError(err)
+			return err
 		}
 	}
 

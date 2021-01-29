@@ -13,8 +13,8 @@ import (
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
+	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
 	"github.com/calmisland/go-errors"
 )
 
@@ -29,7 +29,8 @@ var (
 	// ProductDatabase is the product database.
 	ProductDatabase productdatabase.Database
 	// TransactionService aids with payments processing
-	TransactionService   *services.TransactionStandardService
+	TransactionService *services.TransactionStandardService
+	// TransactionServiceV2 aids with payments processing for v2
 	TransactionServiceV2 *services_v2.TransactionStandardService
 	// ProductAccessService allows use of the product database
 	ProductAccessService *productaccessservice.StandardProductAccessService

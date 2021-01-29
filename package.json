@@ -9,10 +9,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --signal SIGHUP",
-    "build": "go build -o ./bin/main ./main.go",
-    "docker-build": "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/main ./main.go && docker-compose build",
+    "build": "go build -o ./bin/main ./cmd/app/main.go",
+    "docker-build": "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/main ./cmd/app/main.go && docker-compose build",
     "docker-compose-up": "yarn docker-build && docker-compose up",
-    "run:dev": "godotenv go run ./main.go"
+    "run:dev": "godotenv go run ./cmd/app/main.go"
   },
   "repository": {
     "type": "git",
@@ -27,7 +27,7 @@
   },
   "nodemonConfig": {
     "ext": "go json",
-    "exec": "godotenv go run ./",
+    "exec": "godotenv go run ./cmd/app/main.go",
     "ignore": [
       ".git",
       "test/*",

@@ -1,13 +1,14 @@
-package handlers
+package v1
 
 import (
-	"context"
+	"net/http"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
+	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-product/passes"
-	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	"github.com/labstack/echo/v4"
 )
 
 type getTransactionsResponse struct {
@@ -39,8 +40,9 @@ type transactionProductResponse struct {
 	Duration  passes.DurationDays   `json:"duration"`
 }
 
-func HandleGetReceipts(_ context.Context, req *apirequests.Request, resp *apirequests.Response) error {
-	accountID := req.Session.Data.AccountID
+func HandleGetReceipts(c echo.Context) error {
+	cc := c.(*authmiddlewares.AuthContext)
+	accountID := cc.Session.Data.AccountID
 	transactionVOList, err := global.TransactionService.GetTransactionHistory(accountID)
 	if err != nil {
 		return err
@@ -52,7 +54,7 @@ func HandleGetReceipts(_ context.Context, req *apirequests.Request, resp *apireq
 		for j, pass := range transactionVO.PassList {
 			priceStr, err := pass.Price.ToString(pass.Currency)
 			if err != nil {
-				return resp.SetServerError(err)
+				return err
 			}
 			passes[j] = &transactionPassResponse{
 				PassID:    pass.PassID,
@@ -84,6 +86,5 @@ func HandleGetReceipts(_ context.Context, req *apirequests.Request, resp *apireq
 	response := &getTransactionsResponse{
 		Transactions: transactions,
 	}
-	resp.SetBody(response)
-	return nil
+	return c.JSON(http.StatusOK, response)
 }

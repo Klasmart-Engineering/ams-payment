@@ -1,4 +1,4 @@
-package services
+package v2
 
 import (
 	"fmt"
@@ -53,11 +53,11 @@ type Transaction struct {
 }
 
 type PassItem struct {
-	PassID    string
-	Price     passes.Price
-	Currency  passes.Currency
-	StartDate timeutils.EpochTimeMS
-	Duration  passes.DurationDays
+	PassID        string
+	Price         passes.Price
+	Currency      passes.Currency
+	StartDate     timeutils.EpochTimeMS
+	ExpiresDateMS timeutils.EpochTimeMS
 }
 
 type TransactionStandardService struct {
@@ -122,21 +122,21 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 		return err
 	}
 
-	existingPassAccessVOList, err := transactionService.PassAccessService.GetPassAccessVOListByAccountID(accountID)
-	if err != nil {
-		return err
-	}
+	// existingPassAccessVOList, err := transactionService.PassAccessService.GetPassAccessVOListByAccountID(accountID)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Check if all pass are not already active
 	passIds := make([]string, len(items))
 	for i, item := range items {
 		passIds[i] = item.PassID
-		for _, passAccessVO := range existingPassAccessVOList {
-			if item.PassID == passAccessVO.PassID {
-				// Cumulate Pass forbidden
-				return errors.New(apierrors.ErrorPaymentPassAccessAlreadyExist.String())
-			}
-		}
+		// for _, passAccessVO := range existingPassAccessVOList {
+		// if item.PassID == passAccessVO.PassID {
+		// 	// Cumulate Pass forbidden
+		// 	return errors.New(apierrors.ErrorPaymentPassAccessAlreadyExist.String())
+		// }
+		// }
 	}
 
 	// Create the account transaction
@@ -157,7 +157,7 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 			AccountID:      accountID,
 			PassID:         item.PassID,
 			TransactionIDs: []string{transactionID},
-			ExpirationDate: timeutils.ConvEpochTimeMS(item.StartDate.Time().AddDate(0, 0, int(item.Duration))),
+			ExpirationDate: item.ExpiresDateMS,
 			ActivationDate: item.StartDate,
 		}
 	}
@@ -177,9 +177,9 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 				productItems := make([]*productaccessservice.ProductAccessVOItem, len(passVO.Products))
 				for i, productID := range passVO.Products {
 					productItems[i] = &productaccessservice.ProductAccessVOItem{
-						ProductID: productID,
-						StartDate: item.StartDate,
-						Duration:  item.Duration,
+						ProductID:  productID,
+						StartDate:  item.StartDate,
+						DurationMS: passes.DurationMilliseconds(item.ExpiresDateMS) - passes.DurationMilliseconds(item.StartDate),
 					}
 				}
 				err := transactionService.ProductAccessService.CreateOrUpdateProductAccessVOListByTransaction(accountID, transactionID, productItems)
@@ -221,18 +221,13 @@ func buildTransactionIDFromTransactionCode(transactionCode *TransactionCode) (st
 	}
 }
 
-func computeNewExpirationTime(oldExpirationDate, newStartDate, newExpirationDate timeutils.EpochTimeMS) timeutils.EpochTimeMS {
-	deltaDuration := newExpirationDate.Time().Sub(newStartDate.Time())
-	return oldExpirationDate.Add(deltaDuration)
-}
-
 func convertItemMapToProductAccessVOItem(itemMap map[string]*accountdatabase.AccountTransactionItem) []*productaccessservice.ProductAccessVOItem {
 	transactionItemList := make([]*productaccessservice.ProductAccessVOItem, 0, len(itemMap))
 	for key, value := range itemMap {
 		transactionItemList = append(transactionItemList, &productaccessservice.ProductAccessVOItem{
-			ProductID: key,
-			StartDate: value.StartDate,
-			Duration:  passes.DurationDays(value.ExpirationDate.Time().Sub(value.StartDate.Time()).Hours() / 24),
+			ProductID:  key,
+			StartDate:  value.StartDate,
+			DurationMS: passes.DurationMilliseconds(value.ExpirationDate - value.StartDate),
 		})
 	}
 	return transactionItemList
@@ -242,11 +237,11 @@ func convertItemMapToPassItem(itemMap map[string]*accountdatabase.AccountTransac
 	transactionItemList := make([]*PassItem, 0, len(itemMap))
 	for key, value := range itemMap {
 		transactionItemList = append(transactionItemList, &PassItem{
-			PassID:    key,
-			Price:     passes.Price(value.Price),
-			Currency:  passes.Currency(value.Currency),
-			StartDate: value.StartDate,
-			Duration:  passes.DurationDays(value.ExpirationDate.Time().Sub(value.StartDate.Time()).Hours() / 24),
+			PassID:        key,
+			Price:         passes.Price(value.Price),
+			Currency:      passes.Currency(value.Currency),
+			StartDate:     value.StartDate,
+			ExpiresDateMS: value.ExpirationDate,
 		})
 	}
 	return transactionItemList
@@ -255,11 +250,12 @@ func convertItemMapToPassItem(itemMap map[string]*accountdatabase.AccountTransac
 func convertPassItemListToItemMap(items []*PassItem) map[string]*accountdatabase.AccountTransactionItem {
 	itemMap := make(map[string]*accountdatabase.AccountTransactionItem)
 	for _, item := range items {
+
 		itemMap[item.PassID] = &accountdatabase.AccountTransactionItem{
 			Price:          int32(item.Price),
 			Currency:       string(item.Currency),
 			StartDate:      item.StartDate,
-			ExpirationDate: timeutils.ConvEpochTimeMS(item.StartDate.Time().AddDate(0, 0, int(item.Duration))),
+			ExpirationDate: item.ExpiresDateMS,
 		}
 	}
 	return itemMap
@@ -268,9 +264,10 @@ func convertPassItemListToItemMap(items []*PassItem) map[string]*accountdatabase
 func convertProductAccessVOItemListToItemMap(items []*productaccessservice.ProductAccessVOItem) map[string]*accountdatabase.AccountTransactionItem {
 	itemMap := make(map[string]*accountdatabase.AccountTransactionItem)
 	for _, item := range items {
+
 		itemMap[item.ProductID] = &accountdatabase.AccountTransactionItem{
 			StartDate:      item.StartDate,
-			ExpirationDate: timeutils.ConvEpochTimeMS(item.StartDate.Time().AddDate(0, 0, int(item.Duration))),
+			ExpirationDate: item.StartDate + timeutils.EpochTimeMS(item.DurationMS),
 		}
 	}
 	return itemMap

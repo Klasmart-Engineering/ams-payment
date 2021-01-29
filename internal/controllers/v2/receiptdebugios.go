@@ -1,13 +1,14 @@
-package handlers2
+package v2
 
 import (
-	"context"
+	"net/http"
 
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
 	"github.com/awa/go-iap/appstore"
+	"github.com/labstack/echo/v4"
 )
 
 type debugReceiptIosRequestBody struct {
@@ -17,12 +18,13 @@ type debugReceiptIosRequestBody struct {
 }
 
 // DebugReceiptIos handles receipt process requests.
-func DebugReceiptIos(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
+func DebugReceiptIos(c echo.Context) error {
 	// Parse the request body
-	var reqBody debugReceiptIosRequestBody
-	err := req.UnmarshalBody(&reqBody)
+	reqBody := new(debugReceiptIosRequestBody)
+	err := c.Bind(reqBody)
+
 	if err != nil {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 
 	bundleID := textutils.SanitizeString(reqBody.BundleID)
@@ -31,11 +33,11 @@ func DebugReceiptIos(ctx context.Context, req *apirequests.Request, resp *apireq
 	// fmt.Println(reqBody.IsSubscription)
 
 	if len(bundleID) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("bundleID"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("bundleID"))
 	}
 
 	if len(receipt) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("receipt"))
 	}
 
 	iapClient := appstore.New()
@@ -50,13 +52,11 @@ func DebugReceiptIos(ctx context.Context, req *apirequests.Request, resp *apireq
 	}
 
 	iapResp := &appstore.IAPResponse{}
-	err = iapClient.Verify(ctx, iapReq, iapResp)
+	err = iapClient.Verify(c.Request().Context(), iapReq, iapResp)
 
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
-	resp.SetBody(&iapResp)
-
-	return nil
+	return c.JSON(http.StatusOK, iapResp)
 }

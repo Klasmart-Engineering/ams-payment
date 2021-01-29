@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	apiDefinitionPath = "../../api-v1.json"
+	apiDefinitionPath = "../../api/api-v1.json"
 )
 
 func TestValidateAPIDefinition(t *testing.T) {

@@ -2,25 +2,23 @@ module bitbucket.org/calmisland/payment-lambda-funcs
 
 go 1.15
 
-// replace bitbucket.org/calmisland/go-server-iap-platform => /Volumes/sapsaldog-nvme/calmisland/ams/go-server-iap-platform
-
 require (
 	bitbucket.org/calmisland/go-server-account v1.14.2
 	bitbucket.org/calmisland/go-server-api v0.2.3
-	bitbucket.org/calmisland/go-server-auth v1.2.1
+	bitbucket.org/calmisland/go-server-auth v1.3.1
 	bitbucket.org/calmisland/go-server-aws v1.14.6
 	bitbucket.org/calmisland/go-server-cloud v0.4.0
 	bitbucket.org/calmisland/go-server-configs v1.1.4
 	bitbucket.org/calmisland/go-server-databases v0.6.1 // indirect
 	bitbucket.org/calmisland/go-server-iap v0.3.5
 	bitbucket.org/calmisland/go-server-iap-platform v1.0.1
-	bitbucket.org/calmisland/go-server-info v1.1.0 // indirect
+	bitbucket.org/calmisland/go-server-info v1.1.0
 	bitbucket.org/calmisland/go-server-logs v1.2.2
 	bitbucket.org/calmisland/go-server-messages v1.3.0
 	bitbucket.org/calmisland/go-server-product v1.16.3
 	bitbucket.org/calmisland/go-server-queues v1.0.2 // indirect
 	bitbucket.org/calmisland/go-server-reference-data v1.2.1 // indirect
-	bitbucket.org/calmisland/go-server-requests v1.20.6
+	bitbucket.org/calmisland/go-server-requests v1.21.0
 	bitbucket.org/calmisland/go-server-utils v1.9.2
 	bitbucket.org/calmisland/go-slack v0.2.2 // indirect
 	cloud.google.com/go v0.75.0 // indirect
@@ -35,6 +33,7 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/google/uuid v1.1.4 // indirect
 	github.com/guregu/dynamo v1.10.2 // indirect
+	github.com/labstack/echo/v4 v4.1.17
 	github.com/multiplay/go-slack v0.0.0-20200412115802-09e9e2b93fe2
 	github.com/sirupsen/logrus v1.7.0
 	golang.org/x/oauth2 v0.0.0-20210112200429-01de73cf58bd // indirect

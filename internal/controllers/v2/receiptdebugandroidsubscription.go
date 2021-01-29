@@ -1,16 +1,17 @@
-package handlers2
+package v2
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"os"
 
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
 	"github.com/awa/go-iap/playstore"
+	"github.com/labstack/echo/v4"
 	"google.golang.org/api/androidpublisher/v3"
 )
 
@@ -26,54 +27,55 @@ type debugReceiptAndroidSubscriptionResponseBody struct {
 }
 
 // DebugReceiptAndroidSubscription handles receipt process requests.
-func DebugReceiptAndroidSubscription(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
+func DebugReceiptAndroidSubscription(c echo.Context) error {
 	// Parse the request body
-	var reqBody debugReceiptAndroidSubscriptionRequestBody
-	err := req.UnmarshalBody(&reqBody)
+	reqBody := new(debugReceiptAndroidSubscriptionRequestBody)
+	err := c.Bind(reqBody)
+
 	if err != nil {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 
 	receipt := textutils.SanitizeMultiLineString(reqBody.Receipt)
 	signature := textutils.SanitizeString(reqBody.Signature)
 
 	if len(receipt) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("receipt"))
 	}
 
 	if len(signature) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("signature"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("signature"))
 	}
 
 	var objReceipt iap.PlayStoreReceiptJSON
 	err = json.Unmarshal([]byte(reqBody.Receipt), &objReceipt)
 
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
 	isValid, err := playstore.VerifySignature(iap.GetService().GetAndroidPublicKey(objReceipt.PackageName), []byte(reqBody.Receipt), signature)
 
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
 	jsonKeyBase64 := os.Getenv("GOOGLE_PLAYSTORE_JSON_KEY")
 	jsonKeyStr, err := base64.StdEncoding.DecodeString(jsonKeyBase64)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 	jsonKey := []byte(jsonKeyStr)
 
 	client, err := playstore.New(jsonKey)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
-	subscriptionInfo, err := client.VerifySubscription(ctx, objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
+	subscriptionInfo, err := client.VerifySubscription(c.Request().Context(), objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
 
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
 	var respBody debugReceiptAndroidSubscriptionResponseBody = debugReceiptAndroidSubscriptionResponseBody{
@@ -85,7 +87,5 @@ func DebugReceiptAndroidSubscription(ctx context.Context, req *apirequests.Reque
 		respBody.SubscriptionInfo = *subscriptionInfo
 	}
 
-	resp.SetBody(&respBody)
-
-	return nil
+	return c.JSON(http.StatusOK, respBody)
 }

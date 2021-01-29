@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
 	log "github.com/sirupsen/logrus"
 )
 

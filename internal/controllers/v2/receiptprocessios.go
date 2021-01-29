@@ -1,21 +1,22 @@
-package handlers2
+package v2
 
 import (
-	"context"
 	"strconv"
 
+	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/iap"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/pkg/service2"
-	utils "bitbucket.org/calmisland/payment-lambda-funcs/pkg/util"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	utils "bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
 	"github.com/awa/go-iap/appstore"
 	"github.com/calmisland/go-errors"
+	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -26,12 +27,14 @@ type processReceiptIosRequestBody struct {
 }
 
 // ProcessReceiptIos handles receipt process requests.
-func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apirequests.Response) error {
+func ProcessReceiptIos(c echo.Context) error {
+	cc := c.(*authmiddlewares.AuthContext)
+	accountID := cc.Session.Data.AccountID
 	// Parse the request body
-	var reqBody processReceiptIosRequestBody
-	err := req.UnmarshalBody(&reqBody)
+	reqBody := new(processReceiptIosRequestBody)
+	err := c.Bind(reqBody)
 	if err != nil {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 
 	transactionID := textutils.SanitizeString(reqBody.TransactionID)
@@ -42,18 +45,16 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 
 	// Validate Input parameters
 	if len(transactionID) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("transactionId"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("transactionId"))
 	}
 
 	if len(bundleID) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("bundleID"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("bundleID"))
 	}
 
 	if len(receipt) == 0 {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("receipt"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("receipt"))
 	}
-
-	accountID := req.Session.Data.AccountID
 
 	var transactionCode services_v2.TransactionCode
 	transactionCode.Store = "apple"
@@ -71,7 +72,7 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 
 	password, hasSharedKey := iap.GetService().IosSharedSecrects[bundleID]
 	if hasSharedKey == false {
-		return resp.SetClientError(apierrors.ErrorInvalidParameters.WithField("bundleID").WithMessage("No Shared Key"))
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("bundleID").WithMessage("No Shared Key"))
 	}
 
 	iapReq := appstore.IAPRequest{
@@ -80,30 +81,30 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 	}
 
 	iapResp := &appstore.IAPResponse{}
-	err = iapClient.Verify(ctx, iapReq, iapResp)
+	err = iapClient.Verify(c.Request().Context(), iapReq, iapResp)
 
 	if err != nil {
-		resp.SetServerError(err)
+		return err
 	} else if iapResp.Status != 0 {
 		err := appstore.HandleError(iapResp.Status)
 
 		switch err {
 		case appstore.ErrInvalidJSON, appstore.ErrInvalidReceiptData:
 			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received a receipt with invalid format for store [apple] and transaction [%s]", transactionID)
-			return resp.SetClientError(apierrors.ErrorIAPInvalidReceiptFormat)
+			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPInvalidReceiptFormat)
 		case appstore.ErrReceiptUnauthenticated, appstore.ErrReceiptUnauthorized:
 			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple] and transaction [%s]", transactionID)
-			return resp.SetClientError(apierrors.ErrorIAPReceiptUnauthorized)
+			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptUnauthorized)
 		case appstore.ErrInvalidSharedSecret:
 			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple] and transaction [%s]", transactionID)
-			// return resp.SetClientError(&APIError{StatusCode: http.StatusForbidden, ErrorCode: 310, ErrorName: "IAP_RECEIPT_IOS_SHARED_SECRET_NOT_MATCHED"})
-			return resp.SetClientError(apierrors.ErrorIAPReceiptUnauthorized)
+			// return apirequests.EchoSetClientError(c, &APIError{StatusCode: http.StatusForbidden, ErrorCode: 310, ErrorName: "IAP_RECEIPT_IOS_SHARED_SECRET_NOT_MATCHED"})
+			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptUnauthorized)
 		case appstore.ErrServerUnavailable:
 			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The ios verification server is currently unavailable.")
-			return resp.SetClientError(apierrors.ErrorIAPServiceUnavailable)
+			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPServiceUnavailable)
 		}
 
-		return resp.SetServerError(err)
+		return err
 	}
 
 	// fmt.Println(iapResp)
@@ -111,7 +112,7 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 	productPurchase := findIosInAppInfoWithTransactionID(&iapResp.Receipt.InApp, transactionID)
 	if productPurchase == nil {
 		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Unable to find transaction [%s] in receipt for store [apple]", transactionID)
-		return resp.SetClientError(apierrors.ErrorIAPReceiptTransactionNotFound)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptTransactionNotFound)
 	}
 
 	contextLogger = contextLogger.WithFields(log.Fields{
@@ -122,24 +123,24 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 	// Validating transaction
 	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	} else if transaction != nil {
 		if transaction.AccountID == accountID {
 			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [apple] has already been processed by the same account [%s].", transactionID, accountID)
-			return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
+			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
 		}
 
 		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [apple] requested for account [%s] has already been processed by another account [%s].", transactionID, accountID, transaction.AccountID)
-		return resp.SetClientError(apierrors.ErrorIAPTransactionAlreadyProcessed)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessed)
 	}
 
 	storeProductID := productPurchase.ProductID
 	storeProducts, err := global.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	} else if len(storeProducts) == 0 {
 		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [apple] and store product [%s] isn't available for sale.", transactionID, storeProductID)
-		return resp.SetClientError(apierrors.ErrorIAPProductNotForSale)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPProductNotForSale)
 	}
 
 	productType := storeproducts.StoreProductTypeDefault
@@ -152,28 +153,28 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 		if productType == storeproducts.StoreProductTypeDefault {
 			productType = product.Type
 		} else if productType != product.Type {
-			return resp.SetServerError(errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID))
+			return errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID)
 		}
 
 		if product.Type == storeproducts.StoreProductTypePass {
 			passInfo, err := global.PassService.GetPassVOByPassID(product.ItemID)
 			contextLogger.Info(passInfo)
 			if err != nil {
-				return resp.SetServerError(err)
+				return err
 			} else if passInfo == nil {
-				return resp.SetServerError(errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
+				return errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID)
 			}
 
 			expireDateMS, err := strconv.Atoi(productPurchase.ExpiresDateMS)
 
 			if err != nil {
-				return resp.SetServerError(err)
+				return err
 			}
 
 			purchaseDateMS, err := strconv.Atoi(productPurchase.PurchaseDateMS)
 
 			if err != nil {
-				return resp.SetServerError(err)
+				return err
 			}
 
 			passItems = append(passItems, &services_v2.PassItem{
@@ -195,12 +196,12 @@ func ProcessReceiptIos(ctx context.Context, req *apirequests.Request, resp *apir
 	if productType == storeproducts.StoreProductTypeProduct {
 		err = global.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
 		if err != nil {
-			return resp.SetServerError(err)
+			return err
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
 		err = global.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
 		if err != nil {
-			return resp.SetServerError(err)
+			return err
 		}
 	}
 

@@ -1,14 +1,16 @@
-package handlers
+package v1
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 
+	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
+	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
 	"bitbucket.org/calmisland/go-server-logs/logger"
 	"bitbucket.org/calmisland/go-server-messages/messages"
@@ -17,8 +19,8 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
 )
 
 type paypalPaymentRequestBody struct {
@@ -26,14 +28,16 @@ type paypalPaymentRequestBody struct {
 	ProductCode string `json:"productCode"`
 }
 
-func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apirequests.Response) error {
-	var reqBody paypalPaymentRequestBody
-	err := req.UnmarshalBody(&reqBody)
-	if err != nil {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
-	}
+func HandlePayPalPayment(c echo.Context) error {
+	cc := c.(*authmiddlewares.AuthContext)
+	accountID := cc.Session.Data.AccountID
 
-	accountID := req.Session.Data.AccountID
+	reqBody := new(paypalPaymentRequestBody)
+	err := c.Bind(reqBody)
+
+	if err != nil {
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
+	}
 
 	contextLogger := log.WithFields(log.Fields{
 		"paymentMethod": "Paypal",
@@ -46,9 +50,9 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 
 	passVO, err := global.PassService.GetPassVOByPassID(reqBody.ProductCode)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	} else if passVO == nil {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 
 	item := &services.PassItem{
@@ -63,17 +67,17 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on getting a pass price by %s", passVO.Currency)
-		return resp.SetServerError(err)
+		return err
 	}
 	response, err := makePaypalPayment(reqBody.OrderID)
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on making Paypal Payment")
-		return resp.SetServerError(err)
+		return err
 	}
 	if !response.Success || passPrice != response.Value {
 		logFormat(contextLogger, "Failed to make a Paypal Payment")
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 	transactionCode := services.TransactionCode{
 		Store: transactions.PayPal,
@@ -83,7 +87,7 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on SaveTransactionUnlockPasses")
-		return resp.SetServerError(err)
+		return err
 	}
 
 	// Send an email once a pass is unlocked
@@ -91,10 +95,10 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on GetAccountInfo")
-		return resp.SetServerError(err)
+		return err
 	} else if accountInfo == nil {
 		logFormat(contextLogger, "Nil returned from GetAccountInfo")
-		return resp.SetClientError(apierrors.ErrorItemNotFound)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorItemNotFound)
 	}
 	timeNow := timeutils.EpochMSNow()
 	endPassValidityDate := timeutils.ConvEpochTimeMS(timeNow.Time().AddDate(0, 0, int(passVO.Duration)))
@@ -114,13 +118,12 @@ func HandlePayPalPayment(_ context.Context, req *apirequests.Request, resp *apir
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on EnqueueMessage to send an email")
-		return resp.SetServerError(err)
+		return err
 	}
 
 	logFormat(contextLogger, "[PAYPALPAYMENT] A payment for the pass [%s] by account [%s] succeeded\n", passVO.PassID, accountID)
 
-	resp.SetBody(response)
-	return nil
+	return c.JSON(http.StatusOK, response)
 }
 
 type paypalPaymentRequest struct {

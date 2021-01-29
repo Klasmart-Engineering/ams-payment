@@ -1,13 +1,14 @@
-package handlers
+package v1
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
+	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
 	"bitbucket.org/calmisland/go-server-logs/logger"
 	"bitbucket.org/calmisland/go-server-messages/messages"
@@ -16,19 +17,18 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/global"
-	"bitbucket.org/calmisland/payment-lambda-funcs/pkg/service"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
+	"github.com/labstack/echo/v4"
 )
 
-func HandleBraintreeToken(_ context.Context, req *apirequests.Request, resp *apirequests.Response) error {
+func HandleBraintreeToken(c echo.Context) error {
 	token, err := getBraintreeToken()
 	if err != nil {
-		resp.SetServerError(err)
 		return err
 	}
 
-	resp.SetBody(token)
-	return nil
+	return c.JSON(http.StatusOK, token)
 }
 
 type braintreeTokenResponseBody struct {
@@ -55,20 +55,22 @@ type braintreePaymentRequestBody struct {
 	ProductCode string `json:"productCode"`
 }
 
-func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *apirequests.Response) error {
-	var reqBody braintreePaymentRequestBody
-	err := req.UnmarshalBody(&reqBody)
-	if err != nil {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
-	}
+func HandleBraintreePayment(c echo.Context) error {
+	cc := c.(*authmiddlewares.AuthContext)
+	accountID := cc.Session.Data.AccountID
 
-	accountID := req.Session.Data.AccountID
+	reqBody := new(braintreePaymentRequestBody)
+	err := c.Bind(reqBody)
+
+	if err != nil {
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
+	}
 
 	passVO, err := global.PassService.GetPassVOByPassID(reqBody.ProductCode)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	} else if passVO == nil {
-		return resp.SetClientError(apierrors.ErrorBadRequestBody)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 
 	item := &services.PassItem{
@@ -81,11 +83,11 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 
 	passPrice, err := passVO.Price.ToString(passVO.Currency)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 	response, err := makeBraintreePayment(reqBody.Nonce, passPrice)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 	transactionCode := services.TransactionCode{
 		Store: transactions.BrainTree,
@@ -93,15 +95,15 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 	}
 	err = global.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, []*services.PassItem{item})
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
 	// Send an email once a pass is unlocked
 	accountInfo, err := global.AccountDatabase.GetAccountInfo(accountID)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	} else if accountInfo == nil {
-		return resp.SetClientError(apierrors.ErrorItemNotFound)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorItemNotFound)
 	}
 	timeNow := timeutils.EpochMSNow()
 	endPassValidityDate := timeutils.ConvEpochTimeMS(timeNow.Time().AddDate(0, 0, int(passVO.Duration)))
@@ -119,13 +121,12 @@ func HandleBraintreePayment(_ context.Context, req *apirequests.Request, resp *a
 	}
 	err = global.MessageSendQueue.EnqueueMessage(emailMessage)
 	if err != nil {
-		return resp.SetServerError(err)
+		return err
 	}
 
 	log.Printf("[BRAINTREEPAYMENT] A payment for the pass [%s] by account [%s] succeeded\n", passVO.PassID, accountID)
 
-	resp.SetBody(response)
-	return nil
+	return c.JSON(http.StatusOK, response)
 }
 
 type braintreePaymentRequest struct {
