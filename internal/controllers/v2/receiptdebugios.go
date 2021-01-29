@@ -6,6 +6,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
 	"github.com/awa/go-iap/appstore"
 	"github.com/labstack/echo/v4"
@@ -55,7 +56,7 @@ func DebugReceiptIos(c echo.Context) error {
 	err = iapClient.Verify(c.Request().Context(), iapReq, iapResp)
 
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	return c.JSON(http.StatusOK, iapResp)

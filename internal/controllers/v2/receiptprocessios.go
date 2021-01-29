@@ -16,6 +16,8 @@ import (
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
 	"github.com/awa/go-iap/appstore"
 	"github.com/calmisland/go-errors"
+	"github.com/getsentry/sentry-go"
+	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
@@ -30,6 +32,13 @@ type processReceiptIosRequestBody struct {
 func ProcessReceiptIos(c echo.Context) error {
 	cc := c.(*authmiddlewares.AuthContext)
 	accountID := cc.Session.Data.AccountID
+
+	hub := sentryecho.GetHubFromContext(c)
+	hub.ConfigureScope(func(scope *sentry.Scope) {
+		scope.SetUser(sentry.User{
+			ID: accountID,
+		})
+	})
 	// Parse the request body
 	reqBody := new(processReceiptIosRequestBody)
 	err := c.Bind(reqBody)
@@ -84,7 +93,7 @@ func ProcessReceiptIos(c echo.Context) error {
 	err = iapClient.Verify(c.Request().Context(), iapReq, iapResp)
 
 	if err != nil {
-		return err
+		return utils.HandleInternalError(c, err)
 	} else if iapResp.Status != 0 {
 		err := appstore.HandleError(iapResp.Status)
 
@@ -104,7 +113,7 @@ func ProcessReceiptIos(c echo.Context) error {
 			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPServiceUnavailable)
 		}
 
-		return err
+		return utils.HandleInternalError(c, err)
 	}
 
 	// fmt.Println(iapResp)
@@ -123,7 +132,7 @@ func ProcessReceiptIos(c echo.Context) error {
 	// Validating transaction
 	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
 	if err != nil {
-		return err
+		return utils.HandleInternalError(c, err)
 	} else if transaction != nil {
 		if transaction.AccountID == accountID {
 			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [apple] has already been processed by the same account [%s].", transactionID, accountID)
@@ -137,7 +146,7 @@ func ProcessReceiptIos(c echo.Context) error {
 	storeProductID := productPurchase.ProductID
 	storeProducts, err := global.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
 	if err != nil {
-		return err
+		return utils.HandleInternalError(c, err)
 	} else if len(storeProducts) == 0 {
 		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [apple] and store product [%s] isn't available for sale.", transactionID, storeProductID)
 		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPProductNotForSale)
@@ -153,28 +162,28 @@ func ProcessReceiptIos(c echo.Context) error {
 		if productType == storeproducts.StoreProductTypeDefault {
 			productType = product.Type
 		} else if productType != product.Type {
-			return errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID)
+			return utils.HandleInternalError(c, errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID))
 		}
 
 		if product.Type == storeproducts.StoreProductTypePass {
 			passInfo, err := global.PassService.GetPassVOByPassID(product.ItemID)
 			contextLogger.Info(passInfo)
 			if err != nil {
-				return err
+				return utils.HandleInternalError(c, err)
 			} else if passInfo == nil {
-				return errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID)
+				return utils.HandleInternalError(c, errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
 			}
 
 			expireDateMS, err := strconv.Atoi(productPurchase.ExpiresDateMS)
 
 			if err != nil {
-				return err
+				return utils.HandleInternalError(c, err)
 			}
 
 			purchaseDateMS, err := strconv.Atoi(productPurchase.PurchaseDateMS)
 
 			if err != nil {
-				return err
+				return utils.HandleInternalError(c, err)
 			}
 
 			passItems = append(passItems, &services_v2.PassItem{
@@ -196,12 +205,12 @@ func ProcessReceiptIos(c echo.Context) error {
 	if productType == storeproducts.StoreProductTypeProduct {
 		err = global.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
 		if err != nil {
-			return err
+			return utils.HandleInternalError(c, err)
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
 		err = global.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
 		if err != nil {
-			return err
+			return utils.HandleInternalError(c, err)
 		}
 	}
 

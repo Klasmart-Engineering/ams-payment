@@ -8,6 +8,9 @@ import (
 	"bitbucket.org/calmisland/go-server-product/passes"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
+	"github.com/getsentry/sentry-go"
+	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v4"
 )
 
@@ -43,9 +46,17 @@ type transactionProductResponse struct {
 func HandleGetReceipts(c echo.Context) error {
 	cc := c.(*authmiddlewares.AuthContext)
 	accountID := cc.Session.Data.AccountID
+
+	hub := sentryecho.GetHubFromContext(c)
+	hub.ConfigureScope(func(scope *sentry.Scope) {
+		scope.SetUser(sentry.User{
+			ID: accountID,
+		})
+	})
+
 	transactionVOList, err := global.TransactionService.GetTransactionHistory(accountID)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	transactions := make([]*getTransactionResponse, len(transactionVOList))
@@ -54,7 +65,7 @@ func HandleGetReceipts(c echo.Context) error {
 		for j, pass := range transactionVO.PassList {
 			priceStr, err := pass.Price.ToString(pass.Currency)
 			if err != nil {
-				return err
+				return helpers.HandleInternalError(c, err)
 			}
 			passes[j] = &transactionPassResponse{
 				PassID:    pass.PassID,

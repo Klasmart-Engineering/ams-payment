@@ -9,6 +9,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
 	"github.com/awa/go-iap/playstore"
 	"github.com/labstack/echo/v4"
@@ -29,6 +30,7 @@ type debugReceiptAndroidSubscriptionResponseBody struct {
 // DebugReceiptAndroidSubscription handles receipt process requests.
 func DebugReceiptAndroidSubscription(c echo.Context) error {
 	// Parse the request body
+
 	reqBody := new(debugReceiptAndroidSubscriptionRequestBody)
 	err := c.Bind(reqBody)
 
@@ -51,31 +53,31 @@ func DebugReceiptAndroidSubscription(c echo.Context) error {
 	err = json.Unmarshal([]byte(reqBody.Receipt), &objReceipt)
 
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	isValid, err := playstore.VerifySignature(iap.GetService().GetAndroidPublicKey(objReceipt.PackageName), []byte(reqBody.Receipt), signature)
 
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	jsonKeyBase64 := os.Getenv("GOOGLE_PLAYSTORE_JSON_KEY")
 	jsonKeyStr, err := base64.StdEncoding.DecodeString(jsonKeyBase64)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 	jsonKey := []byte(jsonKeyStr)
 
 	client, err := playstore.New(jsonKey)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	subscriptionInfo, err := client.VerifySubscription(c.Request().Context(), objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
 
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	var respBody debugReceiptAndroidSubscriptionResponseBody = debugReceiptAndroidSubscriptionResponseBody{

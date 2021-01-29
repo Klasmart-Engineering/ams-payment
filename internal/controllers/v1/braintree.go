@@ -18,6 +18,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
 	"github.com/labstack/echo/v4"
 )
@@ -25,7 +26,7 @@ import (
 func HandleBraintreeToken(c echo.Context) error {
 	token, err := getBraintreeToken()
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	return c.JSON(http.StatusOK, token)
@@ -68,7 +69,7 @@ func HandleBraintreePayment(c echo.Context) error {
 
 	passVO, err := global.PassService.GetPassVOByPassID(reqBody.ProductCode)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	} else if passVO == nil {
 		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
@@ -83,11 +84,11 @@ func HandleBraintreePayment(c echo.Context) error {
 
 	passPrice, err := passVO.Price.ToString(passVO.Currency)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 	response, err := makeBraintreePayment(reqBody.Nonce, passPrice)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 	transactionCode := services.TransactionCode{
 		Store: transactions.BrainTree,
@@ -95,13 +96,13 @@ func HandleBraintreePayment(c echo.Context) error {
 	}
 	err = global.TransactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, []*services.PassItem{item})
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	// Send an email once a pass is unlocked
 	accountInfo, err := global.AccountDatabase.GetAccountInfo(accountID)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	} else if accountInfo == nil {
 		return apirequests.EchoSetClientError(c, apierrors.ErrorItemNotFound)
 	}
@@ -121,7 +122,7 @@ func HandleBraintreePayment(c echo.Context) error {
 	}
 	err = global.MessageSendQueue.EnqueueMessage(emailMessage)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	log.Printf("[BRAINTREEPAYMENT] A payment for the pass [%s] by account [%s] succeeded\n", passVO.PassID, accountID)

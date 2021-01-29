@@ -20,7 +20,10 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
+	"github.com/getsentry/sentry-go"
+	sentryecho "github.com/getsentry/sentry-go/echo"
 )
 
 type paypalPaymentRequestBody struct {
@@ -31,6 +34,13 @@ type paypalPaymentRequestBody struct {
 func HandlePayPalPayment(c echo.Context) error {
 	cc := c.(*authmiddlewares.AuthContext)
 	accountID := cc.Session.Data.AccountID
+
+	hub := sentryecho.GetHubFromContext(c)
+	hub.ConfigureScope(func(scope *sentry.Scope) {
+		scope.SetUser(sentry.User{
+			ID: accountID,
+		})
+	})
 
 	reqBody := new(paypalPaymentRequestBody)
 	err := c.Bind(reqBody)
@@ -50,7 +60,7 @@ func HandlePayPalPayment(c echo.Context) error {
 
 	passVO, err := global.PassService.GetPassVOByPassID(reqBody.ProductCode)
 	if err != nil {
-		return err
+		return helpers.HandleInternalError(c, err)
 	} else if passVO == nil {
 		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
@@ -67,13 +77,13 @@ func HandlePayPalPayment(c echo.Context) error {
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on getting a pass price by %s", passVO.Currency)
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 	response, err := makePaypalPayment(reqBody.OrderID)
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on making Paypal Payment")
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 	if !response.Success || passPrice != response.Value {
 		logFormat(contextLogger, "Failed to make a Paypal Payment")
@@ -87,7 +97,7 @@ func HandlePayPalPayment(c echo.Context) error {
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on SaveTransactionUnlockPasses")
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	// Send an email once a pass is unlocked
@@ -95,7 +105,7 @@ func HandlePayPalPayment(c echo.Context) error {
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on GetAccountInfo")
-		return err
+		return helpers.HandleInternalError(c, err)
 	} else if accountInfo == nil {
 		logFormat(contextLogger, "Nil returned from GetAccountInfo")
 		return apirequests.EchoSetClientError(c, apierrors.ErrorItemNotFound)
@@ -118,7 +128,7 @@ func HandlePayPalPayment(c echo.Context) error {
 	if err != nil {
 		contextLogger.WithError(err)
 		logFormat(contextLogger, "Error on EnqueueMessage to send an email")
-		return err
+		return helpers.HandleInternalError(c, err)
 	}
 
 	logFormat(contextLogger, "[PAYPALPAYMENT] A payment for the pass [%s] by account [%s] succeeded\n", passVO.PassID, accountID)
