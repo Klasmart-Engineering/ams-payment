@@ -21,6 +21,7 @@ func SetupRouter() *echo.Echo {
 	// e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(sentryecho.New(sentryecho.Options{}))
+	e.Use(middleware.CORS())
 
 	// e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 	// 	return func(ctx echo.Context) error {
