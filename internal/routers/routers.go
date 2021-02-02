@@ -14,6 +14,7 @@ import (
 func SetupRouter() *echo.Echo {
 	// Echo instance
 	e := echo.New()
+	e.IPExtractor = echo.ExtractIPFromRealIPHeader()
 
 	authMiddleware := authmiddlewares.EchoAuthMiddleware(global.AccessTokenValidator, true)
 
