@@ -11,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
-	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
@@ -23,8 +22,6 @@ import (
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
 	"github.com/calmisland/go-errors"
-	"github.com/getsentry/sentry-go"
-	sentryecho "github.com/getsentry/sentry-go/echo"
 )
 
 const (
@@ -53,15 +50,7 @@ func IsReceiptToGooglePlay(platform string) bool {
 // HandleProcessReceipt handles receipt process requests.
 func HandleProcessReceipt(c echo.Context) error {
 	// Parse the request body
-	cc := c.(*authmiddlewares.AuthContext)
-	accountID := cc.Session.Data.AccountID
-
-	hub := sentryecho.GetHubFromContext(c)
-	hub.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetUser(sentry.User{
-			ID: accountID,
-		})
-	})
+	accountID := helpers.GetAccountID(c)
 
 	reqBody := new(processReceiptRequestBody)
 	err := c.Bind(reqBody)

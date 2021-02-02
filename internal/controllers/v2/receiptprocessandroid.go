@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
@@ -14,13 +13,12 @@ import (
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	utils "bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
 	"github.com/awa/go-iap/playstore"
 	"github.com/calmisland/go-errors"
-	"github.com/getsentry/sentry-go"
-	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
@@ -32,16 +30,7 @@ type processReceiptAndroidRequestBody struct {
 
 // ProcessReceiptAndroid handles receipt process requests.
 func ProcessReceiptAndroid(c echo.Context) error {
-
-	cc := c.(*authmiddlewares.AuthContext)
-	accountID := cc.Session.Data.AccountID
-
-	hub := sentryecho.GetHubFromContext(c)
-	hub.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetUser(sentry.User{
-			ID: accountID,
-		})
-	})
+	accountID := helpers.GetAccountID(c)
 
 	// Parse the request body
 	reqBody := new(processReceiptAndroidRequestBody)

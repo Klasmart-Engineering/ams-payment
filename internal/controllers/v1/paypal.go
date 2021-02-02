@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
-	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
 	"bitbucket.org/calmisland/go-server-logs/logger"
 	"bitbucket.org/calmisland/go-server-messages/messages"
@@ -22,8 +21,6 @@ import (
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
-	"github.com/getsentry/sentry-go"
-	sentryecho "github.com/getsentry/sentry-go/echo"
 )
 
 type paypalPaymentRequestBody struct {
@@ -32,15 +29,7 @@ type paypalPaymentRequestBody struct {
 }
 
 func HandlePayPalPayment(c echo.Context) error {
-	cc := c.(*authmiddlewares.AuthContext)
-	accountID := cc.Session.Data.AccountID
-
-	hub := sentryecho.GetHubFromContext(c)
-	hub.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetUser(sentry.User{
-			ID: accountID,
-		})
-	})
+	accountID := helpers.GetAccountID(c)
 
 	reqBody := new(paypalPaymentRequestBody)
 	err := c.Bind(reqBody)

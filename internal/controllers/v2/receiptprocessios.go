@@ -3,7 +3,6 @@ package v2
 import (
 	"strconv"
 
-	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
 	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
@@ -11,13 +10,12 @@ import (
 	"bitbucket.org/calmisland/go-server-utils/textutils"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	utils "bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
 	"github.com/awa/go-iap/appstore"
 	"github.com/calmisland/go-errors"
-	"github.com/getsentry/sentry-go"
-	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
@@ -30,15 +28,8 @@ type processReceiptIosRequestBody struct {
 
 // ProcessReceiptIos handles receipt process requests.
 func ProcessReceiptIos(c echo.Context) error {
-	cc := c.(*authmiddlewares.AuthContext)
-	accountID := cc.Session.Data.AccountID
+	accountID := helpers.GetAccountID(c)
 
-	hub := sentryecho.GetHubFromContext(c)
-	hub.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetUser(sentry.User{
-			ID: accountID,
-		})
-	})
 	// Parse the request body
 	reqBody := new(processReceiptIosRequestBody)
 	err := c.Bind(reqBody)

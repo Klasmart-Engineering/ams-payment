@@ -5,6 +5,7 @@ import (
 	apiControllerV1 "bitbucket.org/calmisland/payment-lambda-funcs/internal/controllers/v1"
 	apiControllerV2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/controllers/v2"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
+	"github.com/getsentry/sentry-go"
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -24,14 +25,16 @@ func SetupRouter() *echo.Echo {
 	e.Use(sentryecho.New(sentryecho.Options{}))
 	e.Use(middleware.CORS())
 
-	// e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-	// 	return func(ctx echo.Context) error {
-	// 		if hub := sentryecho.GetHubFromContext(ctx); hub != nil {
-	// 			hub.Scope().SetTag("someRandomTag", "maybeYouNeedIt")
-	// 		}
-	// 		return next(ctx)
-	// 	}
-	// })
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) error {
+			if hub := sentryecho.GetHubFromContext(ctx); hub != nil {
+				hub.Scope().SetUser(sentry.User{
+					IPAddress: ctx.RealIP(),
+				})
+			}
+			return next(ctx)
+		}
+	})
 
 	v1 := e.Group("/v1")
 

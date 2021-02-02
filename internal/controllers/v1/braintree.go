@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"bitbucket.org/calmisland/go-server-account/transactions"
-	"bitbucket.org/calmisland/go-server-auth/authmiddlewares"
 	"bitbucket.org/calmisland/go-server-cloud/cloudfunctions"
 	"bitbucket.org/calmisland/go-server-logs/logger"
 	"bitbucket.org/calmisland/go-server-messages/messages"
@@ -57,8 +56,7 @@ type braintreePaymentRequestBody struct {
 }
 
 func HandleBraintreePayment(c echo.Context) error {
-	cc := c.(*authmiddlewares.AuthContext)
-	accountID := cc.Session.Data.AccountID
+	accountID := helpers.GetAccountID(c)
 
 	reqBody := new(braintreePaymentRequestBody)
 	err := c.Bind(reqBody)
