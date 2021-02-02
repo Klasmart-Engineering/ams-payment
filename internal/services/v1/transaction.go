@@ -53,11 +53,12 @@ type Transaction struct {
 }
 
 type PassItem struct {
-	PassID    string
-	Price     passes.Price
-	Currency  passes.Currency
-	StartDate timeutils.EpochTimeMS
-	Duration  passes.DurationDays
+	PassID         string
+	Price          passes.Price
+	Currency       passes.Currency
+	StartDate      timeutils.EpochTimeMS
+	Duration       passes.DurationDays
+	ExpirationDate timeutils.EpochTimeMS
 }
 
 type TransactionStandardService struct {
@@ -242,11 +243,12 @@ func convertItemMapToPassItem(itemMap map[string]*accountdatabase.AccountTransac
 	transactionItemList := make([]*PassItem, 0, len(itemMap))
 	for key, value := range itemMap {
 		transactionItemList = append(transactionItemList, &PassItem{
-			PassID:    key,
-			Price:     passes.Price(value.Price),
-			Currency:  passes.Currency(value.Currency),
-			StartDate: value.StartDate,
-			Duration:  passes.DurationDays(value.ExpirationDate.Time().Sub(value.StartDate.Time()).Hours() / 24),
+			PassID:         key,
+			Price:          passes.Price(value.Price),
+			Currency:       passes.Currency(value.Currency),
+			StartDate:      value.StartDate,
+			Duration:       passes.DurationDays(value.ExpirationDate.Time().Sub(value.StartDate.Time()).Hours() / 24),
+			ExpirationDate: value.ExpirationDate,
 		})
 	}
 	return transactionItemList
