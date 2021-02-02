@@ -30,11 +30,12 @@ type getTransactionResponse struct {
 }
 
 type transactionPassResponse struct {
-	PassID    string                `json:"passId"`
-	Price     string                `json:"price"`
-	Currency  passes.Currency       `json:"currency"`
-	StartDate timeutils.EpochTimeMS `json:"startDate"`
-	Duration  passes.DurationDays   `json:"duration"`
+	PassID         string                `json:"passId"`
+	Price          string                `json:"price"`
+	Currency       passes.Currency       `json:"currency"`
+	StartDate      timeutils.EpochTimeMS `json:"startDate"`
+	Duration       passes.DurationDays   `json:"duration"`
+	ExpirationDate timeutils.EpochTimeMS `json:"expirationDate"`
 }
 
 type transactionProductResponse struct {
@@ -68,11 +69,12 @@ func HandleGetReceipts(c echo.Context) error {
 				return helpers.HandleInternalError(c, err)
 			}
 			passes[j] = &transactionPassResponse{
-				PassID:    pass.PassID,
-				Price:     priceStr,
-				Currency:  pass.Currency,
-				StartDate: pass.StartDate,
-				Duration:  pass.Duration,
+				PassID:         pass.PassID,
+				Price:          priceStr,
+				Currency:       pass.Currency,
+				StartDate:      pass.StartDate,
+				Duration:       pass.Duration,
+				ExpirationDate: pass.ExpirationDate,
 			}
 		}
 		products := make([]*transactionProductResponse, len(transactionVO.ProductList))
