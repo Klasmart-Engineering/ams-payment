@@ -25,7 +25,6 @@ import (
 	"bitbucket.org/calmisland/go-server-product/productdatabase/productdynamodb"
 	"bitbucket.org/calmisland/go-server-product/productservice"
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
-	"bitbucket.org/calmisland/go-server-requests/apirouter"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	"bitbucket.org/calmisland/go-server-utils/osutils"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
@@ -55,7 +54,6 @@ func Setup() {
 	setupAccessTokenSystems()
 	setupGooglePlayReceiptValidator()
 	setupAppleStoreReceiptValidator()
-	setupCORS()
 
 	setupMessageQueue()
 
@@ -225,16 +223,6 @@ func setupAppleStoreReceiptValidator() {
 	} else {
 		AppleAppStoreReceiptValidator = nil
 	}
-}
-
-func setupCORS() {
-	var corsConfig apirouter.CORSOptions
-	err := configs.LoadConfig("cross_origin_resource_sharing", &corsConfig, true)
-	if err != nil {
-		panic(err)
-	}
-
-	CORSOptions = &corsConfig
 }
 
 func setupSlackReporter() {
