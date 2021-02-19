@@ -29,7 +29,7 @@ import (
 	"bitbucket.org/calmisland/go-server-utils/osutils"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2/iap"
 
 	"github.com/getsentry/sentry-go"
 )
@@ -146,19 +146,20 @@ func setupServices(accountDatabase accountdatabase.Database, productDatabase pro
 		ProductAccessService: productAccessService,
 	}
 
-	transactionServiceV2 := &services_v2.TransactionStandardService{
-		AccountDatabase:      accountDatabase,
-		PassService:          passService,
-		PassAccessService:    passAccessService,
-		ProductAccessService: productAccessService,
-	}
-
 	productService := &productservice.StandardProductService{
 		ProductDatabase: productDatabase,
 	}
 
 	storeProductService := &storeproductservice.StandardStoreProductService{
 		ProductDatabase: productDatabase,
+	}
+
+	transactionServiceV2 := &services_v2.TransactionStandardService{
+		AccountDatabase:      accountDatabase,
+		PassService:          passService,
+		PassAccessService:    passAccessService,
+		ProductAccessService: productAccessService,
+		StoreProductService:  storeProductService,
 	}
 
 	ProductAccessService = productAccessService

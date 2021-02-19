@@ -1,4 +1,4 @@
-package v2
+package iap
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"bitbucket.org/calmisland/go-server-product/passes"
 	"bitbucket.org/calmisland/go-server-product/passservice"
 	"bitbucket.org/calmisland/go-server-product/productaccessservice"
+	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"github.com/calmisland/go-errors"
@@ -65,6 +66,7 @@ type TransactionStandardService struct {
 	PassService          *passservice.StandardPassService
 	PassAccessService    *passaccessservice.StandardPassAccessService
 	ProductAccessService *productaccessservice.StandardProductAccessService
+	StoreProductService  *storeproductservice.StandardStoreProductService
 }
 
 // GetTransaction return the transaction information based on an account and the associated receipt

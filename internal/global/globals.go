@@ -13,7 +13,7 @@ import (
 	"bitbucket.org/calmisland/go-server-product/storeproductservice"
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2/iap"
 	"github.com/calmisland/go-errors"
 )
 

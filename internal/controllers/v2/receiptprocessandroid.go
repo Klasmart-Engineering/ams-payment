@@ -6,19 +6,15 @@ import (
 	"fmt"
 	"os"
 
-	"bitbucket.org/calmisland/go-server-product/productaccessservice"
-	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
-	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	utils "bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2/iap"
 	"github.com/awa/go-iap/playstore"
-	"github.com/calmisland/go-errors"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
@@ -59,10 +55,6 @@ func ProcessReceiptAndroid(c echo.Context) error {
 
 	transactionID := objReceipt.OrderID
 
-	var transactionCode services_v2.TransactionCode
-	transactionCode.Store = "googlePlay"
-	transactionCode.ID = objReceipt.OrderID
-
 	contextLogger := log.WithFields(log.Fields{
 		"paymentMethod": "InApp: googlePlay - v2",
 		"accountID":     accountID,
@@ -91,22 +83,6 @@ func ProcessReceiptAndroid(c echo.Context) error {
 
 	productPurchase := objReceipt
 
-	// Validating transaction
-	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
-	if err != nil {
-		return utils.HandleInternalError(c, err)
-	} else if transaction != nil {
-		if transaction.AccountID == accountID {
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] has already been processed by the same account [%s].", transactionID, accountID)
-			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
-		}
-
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] requested for account [%s] has already been processed by another account [%s].", transactionID, accountID, transaction.AccountID)
-		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessed)
-	}
-
-	timeNow := timeutils.EpochMSNow()
-
 	jsonKeyBase64 := os.Getenv("GOOGLE_PLAYSTORE_JSON_KEY")
 	jsonKeyStr, err := base64.StdEncoding.DecodeString(jsonKeyBase64)
 	if err != nil {
@@ -121,84 +97,48 @@ func ProcessReceiptAndroid(c echo.Context) error {
 
 	subscriptionInfo, err := client.VerifySubscription(c.Request().Context(), objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
 
-	foundSubscriptionInfo := err == nil
-
-	contextLogger = contextLogger.WithFields(log.Fields{
-		"foundSubscriptionInfo": foundSubscriptionInfo,
-	})
-
-	if foundSubscriptionInfo {
-		timeNow = timeutils.EpochTimeMS(subscriptionInfo.StartTimeMillis)
-		contextLogger = contextLogger.WithFields(log.Fields{
-			"OrderId": subscriptionInfo.OrderId,
-		})
-
-		transactionCode.ID = subscriptionInfo.OrderId
-
-		contextLogger.Info(subscriptionInfo)
-	}
-
-	storeProductID := productPurchase.ProductID
-	storeProducts, err := global.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
 	if err != nil {
 		return utils.HandleInternalError(c, err)
-	} else if len(storeProducts) == 0 {
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [android] and store product [%s] isn't available for sale.", transactionID, storeProductID)
+	}
+
+	contextLogger = contextLogger.WithFields(log.Fields{
+		"OrderId": subscriptionInfo.OrderId,
+	})
+
+	contextLogger.Info(subscriptionInfo)
+
+	var transactionCode services_v2.TransactionCode
+	transactionCode.Store = "googlePlay"
+	transactionCode.ID = subscriptionInfo.OrderId
+
+	storeProductID := productPurchase.ProductID
+
+	storeProducts, err := global.TransactionServiceV2.ValidateTransaction(accountID, storeProductID, transactionCode)
+
+	if te, ok := err.(*services_v2.ValidationTranscationAlreadyProcessedByAnotherAccountError); ok {
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] requested for account [%s] has already been processed by another account [%s].", transactionID, transactionCode.Store, accountID, te.AnotherAccountID)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessed)
+	}
+
+	switch err {
+	case services_v2.ErrValidationNotFoundStoreProduct:
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] and store product [%s] isn't available for sale.", transactionID, transactionCode.Store, storeProductID)
 		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPProductNotForSale)
+	case services_v2.ErrValidationTranscationAlreadyExist:
+		for _, product := range storeProducts {
+			global.TransactionServiceV2.PassAccessService.DeletePassAccess(accountID, product.ItemID)
+		}
+		break
+	case nil:
+		break
+	default:
+		return utils.HandleInternalError(c, err)
 	}
 
-	productType := storeproducts.StoreProductTypeDefault
-	passItems := []*services_v2.PassItem{}
-	productItems := []*productaccessservice.ProductAccessVOItem{}
+	err = global.TransactionServiceV2.RegisterTransaction(accountID, storeProductID, transactionCode, storeProducts, subscriptionInfo.StartTimeMillis, subscriptionInfo.ExpiryTimeMillis)
 
-	for _, product := range storeProducts {
-		if productType == storeproducts.StoreProductTypeDefault {
-			productType = product.Type
-		} else if productType != product.Type {
-			return utils.HandleInternalError(c, errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID))
-		}
-
-		if product.Type == storeproducts.StoreProductTypePass {
-			passInfo, err := global.PassService.GetPassVOByPassID(product.ItemID)
-
-			if err != nil {
-				return utils.HandleInternalError(c, err)
-			} else if passInfo == nil {
-				return utils.HandleInternalError(c, errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
-			}
-
-			expiredTime := timeNow + timeutils.EpochTimeMS(passInfo.DurationMS)
-
-			if foundSubscriptionInfo {
-				expiredTime = timeutils.EpochTimeMS(subscriptionInfo.ExpiryTimeMillis)
-			}
-
-			passItems = append(passItems, &services_v2.PassItem{
-				PassID:        passInfo.PassID,
-				Price:         passInfo.Price,
-				Currency:      passInfo.Currency,
-				StartDate:     timeNow,
-				ExpiresDateMS: expiredTime,
-			})
-			contextLogger.Info(passItems)
-		} else if product.Type == storeproducts.StoreProductTypeProduct {
-			productItems = append(productItems, &productaccessservice.ProductAccessVOItem{
-				ProductID: product.ItemID,
-				StartDate: timeutils.EpochTimeMS(timeNow),
-			})
-		}
-	}
-
-	if productType == storeproducts.StoreProductTypeProduct {
-		err = global.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
-		if err != nil {
-			return utils.HandleInternalError(c, err)
-		}
-	} else if productType == storeproducts.StoreProductTypePass {
-		err = global.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
-		if err != nil {
-			return utils.HandleInternalError(c, err)
-		}
+	if err != nil {
+		return utils.HandleInternalError(c, err)
 	}
 
 	utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Successfully processed transaction [%s] for store [android], store product [%s] and account [%s].", transactionID, storeProductID, accountID)

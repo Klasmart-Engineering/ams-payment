@@ -3,19 +3,15 @@ package v2
 import (
 	"strconv"
 
-	"bitbucket.org/calmisland/go-server-product/productaccessservice"
-	"bitbucket.org/calmisland/go-server-product/storeproducts"
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
-	"bitbucket.org/calmisland/go-server-utils/timeutils"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	utils "bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
-	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2"
+	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2/iap"
 	"github.com/awa/go-iap/appstore"
-	"github.com/calmisland/go-errors"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
@@ -56,14 +52,10 @@ func ProcessReceiptIos(c echo.Context) error {
 		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("receipt"))
 	}
 
-	var transactionCode services_v2.TransactionCode
-	transactionCode.Store = "apple"
-	transactionCode.ID = transactionID
-
 	contextLogger := log.WithFields(log.Fields{
 		"paymentMethod": "InApp: apple - v2",
 		"accountID":     accountID,
-		"transactionID": transactionID,
+		"transactionID": reqBody.TransactionID,
 	})
 
 	contextLogger.Info(reqBody)
@@ -120,89 +112,50 @@ func ProcessReceiptIos(c echo.Context) error {
 		"ExpiresDateMS": productPurchase.ExpiresDateMS,
 	})
 
-	// Validating transaction
-	transaction, err := global.TransactionServiceV2.GetTransactionByTransactionCode(&transactionCode)
-	if err != nil {
-		return utils.HandleInternalError(c, err)
-	} else if transaction != nil {
-		if transaction.AccountID == accountID {
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [apple] has already been processed by the same account [%s].", transactionID, accountID)
-			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessedByYou)
-		}
+	var transactionCode services_v2.TransactionCode
+	transactionCode.Store = "apple"
+	transactionCode.ID = transactionID
 
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [apple] requested for account [%s] has already been processed by another account [%s].", transactionID, accountID, transaction.AccountID)
+	storeProductID := productPurchase.ProductID
+
+	storeProducts, err := global.TransactionServiceV2.ValidateTransaction(accountID, storeProductID, transactionCode)
+
+	if te, ok := err.(*services_v2.ValidationTranscationAlreadyProcessedByAnotherAccountError); ok {
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] requested for account [%s] has already been processed by another account [%s].", transactionID, transactionCode.Store, accountID, te.AnotherAccountID)
 		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPTransactionAlreadyProcessed)
 	}
 
-	storeProductID := productPurchase.ProductID
-	storeProducts, err := global.StoreProductService.GetStoreProductVOListByStoreProductID(storeProductID)
+	switch err {
+	case services_v2.ErrValidationNotFoundStoreProduct:
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [%s] and store product [%s] isn't available for sale.", transactionID, transactionCode.Store, storeProductID)
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPProductNotForSale)
+	case services_v2.ErrValidationTranscationAlreadyExist:
+		for _, product := range storeProducts {
+			global.TransactionServiceV2.PassAccessService.DeletePassAccess(accountID, product.ItemID)
+		}
+		break
+	case nil:
+		break
+	default:
+		return utils.HandleInternalError(c, err)
+	}
+
+	expireDateMS, err := strconv.Atoi(productPurchase.ExpiresDateMS)
+
 	if err != nil {
 		return utils.HandleInternalError(c, err)
-	} else if len(storeProducts) == 0 {
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] The transaction [%s] for store [apple] and store product [%s] isn't available for sale.", transactionID, storeProductID)
-		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPProductNotForSale)
 	}
 
-	productType := storeproducts.StoreProductTypeDefault
-	passItems := []*services_v2.PassItem{}
-	productItems := []*productaccessservice.ProductAccessVOItem{}
+	purchaseDateMS, err := strconv.Atoi(productPurchase.PurchaseDateMS)
 
-	timeNow := timeutils.EpochMSNow()
-	for _, product := range storeProducts {
-		contextLogger.Info(product)
-		if productType == storeproducts.StoreProductTypeDefault {
-			productType = product.Type
-		} else if productType != product.Type {
-			return utils.HandleInternalError(c, errors.Errorf("Expected product type [%d] but found [%d] for store product ID: %s", productType, product.Type, storeProductID))
-		}
-
-		if product.Type == storeproducts.StoreProductTypePass {
-			passInfo, err := global.PassService.GetPassVOByPassID(product.ItemID)
-			contextLogger.Info(passInfo)
-			if err != nil {
-				return utils.HandleInternalError(c, err)
-			} else if passInfo == nil {
-				return utils.HandleInternalError(c, errors.Errorf("Unable to retrieve information about pass [%s] when processing IAP receipt", product.ItemID))
-			}
-
-			expireDateMS, err := strconv.Atoi(productPurchase.ExpiresDateMS)
-
-			if err != nil {
-				return utils.HandleInternalError(c, err)
-			}
-
-			purchaseDateMS, err := strconv.Atoi(productPurchase.PurchaseDateMS)
-
-			if err != nil {
-				return utils.HandleInternalError(c, err)
-			}
-
-			passItems = append(passItems, &services_v2.PassItem{
-				PassID:        passInfo.PassID,
-				Price:         passInfo.Price,
-				Currency:      passInfo.Currency,
-				StartDate:     timeutils.EpochTimeMS(purchaseDateMS),
-				ExpiresDateMS: timeutils.EpochTimeMS(expireDateMS),
-			})
-			contextLogger.Info(passItems)
-		} else if product.Type == storeproducts.StoreProductTypeProduct {
-			productItems = append(productItems, &productaccessservice.ProductAccessVOItem{
-				ProductID: product.ItemID,
-				StartDate: timeNow,
-			})
-		}
+	if err != nil {
+		return utils.HandleInternalError(c, err)
 	}
 
-	if productType == storeproducts.StoreProductTypeProduct {
-		err = global.TransactionServiceV2.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
-		if err != nil {
-			return utils.HandleInternalError(c, err)
-		}
-	} else if productType == storeproducts.StoreProductTypePass {
-		err = global.TransactionServiceV2.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
-		if err != nil {
-			return utils.HandleInternalError(c, err)
-		}
+	err = global.TransactionServiceV2.RegisterTransaction(accountID, storeProductID, transactionCode, storeProducts, int64(purchaseDateMS), int64(expireDateMS))
+
+	if err != nil {
+		return utils.HandleInternalError(c, err)
 	}
 
 	utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Successfully processed transaction [%s] for store [apple], store product [%s] and account [%s].", transactionID, storeProductID, accountID)
