@@ -1,7 +1,6 @@
 package v2
 
 import (
-	"fmt"
 	"strconv"
 
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
@@ -96,7 +95,7 @@ func ProcessReceiptIos(c echo.Context) error {
 	// fmt.Println(iapResp)
 	latestProduct := getLatestIosInAppInfo(&iapResp.Receipt.InApp)
 	if latestProduct == nil {
-		fmt.Println("[IAPPROCESSRECEIPT] No latest App Info")
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] No latest App Info")
 		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptTransactionNotFound)
 	}
 
@@ -104,7 +103,7 @@ func ProcessReceiptIos(c echo.Context) error {
 
 	transactionExists, transactionExistsErr := checkIfPurchaseExists(accountID, latestProduct)
 	if transactionExistsErr != nil {
-		fmt.Println("[IAPPROCESSRECEIPT] transactionExistsErr")
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] transactionExistsErr")
 		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptTransactionNotFound)
 	}
 
@@ -178,55 +177,6 @@ func findIosInAppInfoWithTransactionID(inApps *[]appstore.InApp, transactionID s
 	return nil
 }
 
-/*
-	InApp struct {
-		Quantity                    string `json:"quantity"`
-		ProductID                   string `json:"product_id"`
-		TransactionID               string `json:"transaction_id"`
-		OriginalTransactionID       string `json:"original_transaction_id"`
-		WebOrderLineItemID          string `json:"web_order_line_item_id,omitempty"`
-		PromotionalOfferID          string `json:"promotional_offer_id"`
-		SubscriptionGroupIdentifier string `json:"subscription_group_identifier"`
-		OfferCodeRefName            string `json:"offer_code_ref_name,omitempty"`
-
-		IsTrialPeriod        string `json:"is_trial_period"`
-		IsInIntroOfferPeriod string `json:"is_in_intro_offer_period,omitempty"`
-		IsUpgraded           string `json:"is_upgraded,omitempty"`
-
-		ExpiresDate
-
-		PurchaseDate
-		OriginalPurchaseDate
-
-		CancellationDate
-		CancellationReason string `json:"cancellation_reason,omitempty"`
-	}
-
-		// The PurchaseDate type indicates the date and time that the item was purchased
-	PurchaseDate struct {
-		PurchaseDate    string `json:"purchase_date"`
-		PurchaseDateMS  string `json:"purchase_date_ms"`
-		PurchaseDatePST string `json:"purchase_date_pst"`
-	}
-
-	// The OriginalPurchaseDate type indicates the beginning of the subscription period
-	OriginalPurchaseDate struct {
-		OriginalPurchaseDate    string `json:"original_purchase_date"`
-		OriginalPurchaseDateMS  string `json:"original_purchase_date_ms"`
-		OriginalPurchaseDatePST string `json:"original_purchase_date_pst"`
-	}
-
-	// The ExpiresDate type indicates the expiration date for the subscription
-	ExpiresDate struct {
-		ExpiresDate             string `json:"expires_date,omitempty"`
-		ExpiresDateMS           string `json:"expires_date_ms,omitempty"`
-		ExpiresDatePST          string `json:"expires_date_pst,omitempty"`
-		ExpiresDateFormatted    string `json:"expires_date_formatted,omitempty"`
-		ExpiresDateFormattedPST string `json:"expires_date_formatted_pst,omitempty"`
-	}
-
-*/
-
 func getLatestIosInAppInfo(inApps *[]appstore.InApp) *appstore.InApp {
 	if len(*inApps) == 0 {
 		return nil
@@ -234,10 +184,8 @@ func getLatestIosInAppInfo(inApps *[]appstore.InApp) *appstore.InApp {
 	var latest *appstore.InApp = nil
 	var latestIdx = 0
 
-	fmt.Println("[IAPPROCESSRECEIPT] getLatestIosInAppInfo ")
 	for idx, inApp := range *inApps {
 
-		fmt.Println(inApp)
 		if latest == nil {
 			latestIdx = 0
 			latest = &inApp
@@ -253,8 +201,6 @@ func getLatestIosInAppInfo(inApps *[]appstore.InApp) *appstore.InApp {
 			return nil
 		}
 
-		fmt.Println("latestExpires: ", latestExpires)
-		fmt.Println("newExpires: ", newExpires)
 		if latestExpires < newExpires {
 			latest = &inApp
 			latestIdx = idx
