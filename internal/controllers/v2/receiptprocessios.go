@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"fmt"
 	"strconv"
 
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
@@ -33,16 +34,10 @@ func ProcessReceiptIos(c echo.Context) error {
 		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 
-	transactionID := textutils.SanitizeString(reqBody.TransactionID)
 	bundleID := textutils.SanitizeString(reqBody.BundleID)
 	receipt := textutils.SanitizeMultiLineString(reqBody.Receipt)
 
 	// fmt.Println(reqBody.IsSubscription)
-
-	// Validate Input parameters
-	if len(transactionID) == 0 {
-		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("transactionId"))
-	}
 
 	if len(bundleID) == 0 {
 		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("bundleID"))
@@ -55,7 +50,6 @@ func ProcessReceiptIos(c echo.Context) error {
 	contextLogger := log.WithFields(log.Fields{
 		"paymentMethod": "InApp: apple - v2",
 		"accountID":     accountID,
-		"transactionID": reqBody.TransactionID,
 	})
 
 	contextLogger.Info(reqBody)
@@ -82,13 +76,13 @@ func ProcessReceiptIos(c echo.Context) error {
 
 		switch err {
 		case appstore.ErrInvalidJSON, appstore.ErrInvalidReceiptData:
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received a receipt with invalid format for store [apple] and transaction [%s]", transactionID)
+			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received a receipt with invalid format for store [apple]")
 			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPInvalidReceiptFormat)
 		case appstore.ErrReceiptUnauthenticated, appstore.ErrReceiptUnauthorized:
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple] and transaction [%s]", transactionID)
+			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple]")
 			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptUnauthorized)
 		case appstore.ErrInvalidSharedSecret:
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple] and transaction [%s]", transactionID)
+			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple]")
 			// return apirequests.EchoSetClientError(c, &APIError{StatusCode: http.StatusForbidden, ErrorCode: 310, ErrorName: "IAP_RECEIPT_IOS_SHARED_SECRET_NOT_MATCHED"})
 			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptUnauthorized)
 		case appstore.ErrServerUnavailable:
@@ -100,23 +94,34 @@ func ProcessReceiptIos(c echo.Context) error {
 	}
 
 	// fmt.Println(iapResp)
-
-	productPurchase := findIosInAppInfoWithTransactionID(&iapResp.Receipt.InApp, transactionID)
-	if productPurchase == nil {
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Unable to find transaction [%s] in receipt for store [apple]", transactionID)
+	latestProduct := getLatestIosInAppInfo(&iapResp.Receipt.InApp)
+	if latestProduct == nil {
+		fmt.Println("[IAPPROCESSRECEIPT] No latest App Info")
 		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptTransactionNotFound)
 	}
 
+	transactionID := latestProduct.TransactionID
+
+	transactionExists, transactionExistsErr := checkIfPurchaseExists(accountID, latestProduct)
+	if transactionExistsErr != nil {
+		fmt.Println("[IAPPROCESSRECEIPT] transactionExistsErr")
+		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptTransactionNotFound)
+	}
+
+	if transactionExists {
+		return nil
+	}
+
 	contextLogger = contextLogger.WithFields(log.Fields{
-		"IsTrialPeriod": productPurchase.IsTrialPeriod,
-		"ExpiresDateMS": productPurchase.ExpiresDateMS,
+		"IsTrialPeriod": latestProduct.IsTrialPeriod,
+		"ExpiresDateMS": latestProduct.ExpiresDateMS,
 	})
 
 	var transactionCode services_v2.TransactionCode
 	transactionCode.Store = "apple"
 	transactionCode.ID = transactionID
 
-	storeProductID := productPurchase.ProductID
+	storeProductID := latestProduct.ProductID
 
 	storeProducts, err := global.TransactionServiceV2.ValidateTransaction(accountID, storeProductID, transactionCode)
 
@@ -140,13 +145,13 @@ func ProcessReceiptIos(c echo.Context) error {
 		return utils.HandleInternalError(c, err)
 	}
 
-	expireDateMS, err := strconv.Atoi(productPurchase.ExpiresDateMS)
+	expireDateMS, err := strconv.Atoi(latestProduct.ExpiresDateMS)
 
 	if err != nil {
 		return utils.HandleInternalError(c, err)
 	}
 
-	purchaseDateMS, err := strconv.Atoi(productPurchase.PurchaseDateMS)
+	purchaseDateMS, err := strconv.Atoi(latestProduct.PurchaseDateMS)
 
 	if err != nil {
 		return utils.HandleInternalError(c, err)
@@ -171,4 +176,107 @@ func findIosInAppInfoWithTransactionID(inApps *[]appstore.InApp, transactionID s
 	}
 
 	return nil
+}
+
+/*
+	InApp struct {
+		Quantity                    string `json:"quantity"`
+		ProductID                   string `json:"product_id"`
+		TransactionID               string `json:"transaction_id"`
+		OriginalTransactionID       string `json:"original_transaction_id"`
+		WebOrderLineItemID          string `json:"web_order_line_item_id,omitempty"`
+		PromotionalOfferID          string `json:"promotional_offer_id"`
+		SubscriptionGroupIdentifier string `json:"subscription_group_identifier"`
+		OfferCodeRefName            string `json:"offer_code_ref_name,omitempty"`
+
+		IsTrialPeriod        string `json:"is_trial_period"`
+		IsInIntroOfferPeriod string `json:"is_in_intro_offer_period,omitempty"`
+		IsUpgraded           string `json:"is_upgraded,omitempty"`
+
+		ExpiresDate
+
+		PurchaseDate
+		OriginalPurchaseDate
+
+		CancellationDate
+		CancellationReason string `json:"cancellation_reason,omitempty"`
+	}
+
+		// The PurchaseDate type indicates the date and time that the item was purchased
+	PurchaseDate struct {
+		PurchaseDate    string `json:"purchase_date"`
+		PurchaseDateMS  string `json:"purchase_date_ms"`
+		PurchaseDatePST string `json:"purchase_date_pst"`
+	}
+
+	// The OriginalPurchaseDate type indicates the beginning of the subscription period
+	OriginalPurchaseDate struct {
+		OriginalPurchaseDate    string `json:"original_purchase_date"`
+		OriginalPurchaseDateMS  string `json:"original_purchase_date_ms"`
+		OriginalPurchaseDatePST string `json:"original_purchase_date_pst"`
+	}
+
+	// The ExpiresDate type indicates the expiration date for the subscription
+	ExpiresDate struct {
+		ExpiresDate             string `json:"expires_date,omitempty"`
+		ExpiresDateMS           string `json:"expires_date_ms,omitempty"`
+		ExpiresDatePST          string `json:"expires_date_pst,omitempty"`
+		ExpiresDateFormatted    string `json:"expires_date_formatted,omitempty"`
+		ExpiresDateFormattedPST string `json:"expires_date_formatted_pst,omitempty"`
+	}
+
+*/
+
+func getLatestIosInAppInfo(inApps *[]appstore.InApp) *appstore.InApp {
+	if len(*inApps) == 0 {
+		return nil
+	}
+	var latest *appstore.InApp = nil
+	var latestIdx = 0
+
+	fmt.Println("[IAPPROCESSRECEIPT] getLatestIosInAppInfo ")
+	for idx, inApp := range *inApps {
+
+		fmt.Println(inApp)
+		if latest == nil {
+			latestIdx = 0
+			latest = &inApp
+			continue
+		}
+
+		newExpires, err := strconv.Atoi((*inApps)[idx].ExpiresDate.ExpiresDateMS)
+		if err != nil {
+			return nil
+		}
+		latestExpires, err := strconv.Atoi((*inApps)[latestIdx].ExpiresDate.ExpiresDateMS)
+		if err != nil {
+			return nil
+		}
+
+		fmt.Println("latestExpires: ", latestExpires)
+		fmt.Println("newExpires: ", newExpires)
+		if latestExpires < newExpires {
+			latest = &inApp
+			latestIdx = idx
+			continue
+		}
+	}
+
+	return &(*inApps)[latestIdx]
+}
+
+func checkIfPurchaseExists(accountId string, inApps *appstore.InApp) (bool, error) {
+
+	var transactionCode services_v2.TransactionCode
+	transactionCode.Store = "apple"
+	transactionCode.ID = inApps.TransactionID
+
+	transaction, err := global.TransactionServiceV2.GetTransaction(accountId, &transactionCode)
+	if err != nil {
+		return false, err
+	}
+	if transaction != nil {
+		return true, nil
+	}
+	return false, nil
 }
