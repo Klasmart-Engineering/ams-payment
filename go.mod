@@ -3,13 +3,12 @@ module bitbucket.org/calmisland/payment-lambda-funcs
 go 1.15
 
 require (
-	bitbucket.org/calmisland/go-server-account v1.14.13
+	bitbucket.org/calmisland/go-server-account v1.14.14
 	bitbucket.org/calmisland/go-server-api v0.2.3
 	bitbucket.org/calmisland/go-server-auth v1.3.1
 	bitbucket.org/calmisland/go-server-aws v1.14.6
 	bitbucket.org/calmisland/go-server-cloud v0.4.0
 	bitbucket.org/calmisland/go-server-configs v1.1.4
-	bitbucket.org/calmisland/go-server-databases v0.6.1 // indirect
 	bitbucket.org/calmisland/go-server-iap v0.3.5
 	bitbucket.org/calmisland/go-server-iap-platform v1.0.1
 	bitbucket.org/calmisland/go-server-info v1.1.0
@@ -32,7 +31,6 @@ require (
 	github.com/getsentry/sentry-go v0.10.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/google/uuid v1.2.0 // indirect
-	github.com/guregu/dynamo v1.10.2 // indirect
 	github.com/labstack/echo/v4 v4.2.0
 	github.com/magefile/mage v1.11.0 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
@@ -43,7 +41,6 @@ require (
 	golang.org/x/net v0.0.0-20210226101413-39120d07d75e // indirect
 	golang.org/x/oauth2 v0.0.0-20210220000619-9bb904979d93 // indirect
 	golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073 // indirect
-	golang.org/x/text v0.3.5 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	google.golang.org/api v0.40.0
 	google.golang.org/genproto v0.0.0-20210225212918-ad91960f0274 // indirect

@@ -89,12 +89,12 @@ func (transactionService *TransactionStandardService) RegisterTransaction(accoun
 	}
 
 	if productType == storeproducts.StoreProductTypeProduct {
-		err := transactionService.SaveTransactionUnlockProducts(accountID, &transactionCode, productItems)
+		err := transactionService.SaveTransactionUnlockProducts(accountID, storeProductID, &transactionCode, productItems)
 		if err != nil {
 			return err
 		}
 	} else if productType == storeproducts.StoreProductTypePass {
-		err := transactionService.SaveTransactionUnlockPasses(accountID, &transactionCode, passItems)
+		err := transactionService.SaveTransactionUnlockPasses(accountID, storeProductID, &transactionCode, passItems)
 		if err != nil {
 			return err
 		}

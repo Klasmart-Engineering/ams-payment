@@ -118,7 +118,7 @@ func (transactionService *TransactionStandardService) GetTransactionByTransactio
 }
 
 // SaveTransactionUnlockPasses save the transaction as pendingSettlement and add the associated passes accesses
-func (transactionService *TransactionStandardService) SaveTransactionUnlockPasses(accountID string, transactionCode *TransactionCode, items []*PassItem) error {
+func (transactionService *TransactionStandardService) SaveTransactionUnlockPasses(accountID string, storeProductID string, transactionCode *TransactionCode, items []*PassItem) error {
 	transactionID, err := buildTransactionIDFromTransactionCode(transactionCode)
 	if err != nil {
 		return err
@@ -143,10 +143,11 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 
 	// Create the account transaction
 	err = transactionService.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
-		AccountID:     accountID,
-		TransactionID: transactionID,
-		Passes:        convertPassItemListToItemMap(items),
-		State:         transactions.PendingSettlement,
+		AccountID:      accountID,
+		TransactionID:  transactionID,
+		StoreProductID: storeProductID,
+		Passes:         convertPassItemListToItemMap(items),
+		State:          transactions.PendingSettlement,
 	})
 	if err != nil {
 		return err
@@ -196,16 +197,17 @@ func (transactionService *TransactionStandardService) SaveTransactionUnlockPasse
 }
 
 // SaveTransactionUnlockProducts save the transaction as pendingSettlement and add the associated products accesses
-func (transactionService *TransactionStandardService) SaveTransactionUnlockProducts(accountID string, transactionCode *TransactionCode, items []*productaccessservice.ProductAccessVOItem) error {
+func (transactionService *TransactionStandardService) SaveTransactionUnlockProducts(accountID string, storeProductID string, transactionCode *TransactionCode, items []*productaccessservice.ProductAccessVOItem) error {
 	transactionID, err := buildTransactionIDFromTransactionCode(transactionCode)
 	if err != nil {
 		return err
 	}
 	err = transactionService.AccountDatabase.CreateAccountTransaction(&accountdatabase.CreateAccountTransactionInfo{
-		AccountID:     accountID,
-		TransactionID: transactionID,
-		Products:      convertProductAccessVOItemListToItemMap(items),
-		State:         transactions.PendingSettlement,
+		AccountID:      accountID,
+		TransactionID:  transactionID,
+		StoreProductID: storeProductID,
+		Products:       convertProductAccessVOItemListToItemMap(items),
+		State:          transactions.PendingSettlement,
 	})
 	if err != nil {
 		return err
