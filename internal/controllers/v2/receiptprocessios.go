@@ -176,10 +176,16 @@ func ProcessReceiptIos(c echo.Context) error {
 		return apirequests.EchoSetClientError(c, apierrors.ErrorBadRequestBody)
 	}
 
+	transactionID := textutils.SanitizeString(reqBody.TransactionID)
 	bundleID := textutils.SanitizeString(reqBody.BundleID)
 	receipt := textutils.SanitizeMultiLineString(reqBody.Receipt)
 
 	// fmt.Println(reqBody.IsSubscription)
+
+	// Validate Input parameters
+	if len(transactionID) == 0 {
+		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("transactionId"))
+	}
 
 	if len(bundleID) == 0 {
 		return apirequests.EchoSetClientError(c, apierrors.ErrorInvalidParameters.WithField("bundleID"))
@@ -192,6 +198,7 @@ func ProcessReceiptIos(c echo.Context) error {
 	contextLogger := log.WithFields(log.Fields{
 		"paymentMethod": "InApp: apple - v2",
 		"accountID":     accountID,
+		"transactionID": reqBody.TransactionID,
 	})
 
 	contextLogger.Info(reqBody)
@@ -218,13 +225,13 @@ func ProcessReceiptIos(c echo.Context) error {
 
 		switch err {
 		case appstore.ErrInvalidJSON, appstore.ErrInvalidReceiptData:
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received a receipt with invalid format for store [apple]")
+			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received a receipt with invalid format for store [apple] and transaction [%s]", transactionID)
 			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPInvalidReceiptFormat)
 		case appstore.ErrReceiptUnauthenticated, appstore.ErrReceiptUnauthorized:
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple]")
+			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple] and transaction [%s]", transactionID)
 			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptUnauthorized)
 		case appstore.ErrInvalidSharedSecret:
-			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple]")
+			utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Received an unauthorized receipt for store [apple] and transaction [%s]", transactionID)
 			// return apirequests.EchoSetClientError(c, &APIError{StatusCode: http.StatusForbidden, ErrorCode: 310, ErrorName: "IAP_RECEIPT_IOS_SHARED_SECRET_NOT_MATCHED"})
 			return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptUnauthorized)
 		case appstore.ErrServerUnavailable:
@@ -236,34 +243,23 @@ func ProcessReceiptIos(c echo.Context) error {
 	}
 
 	// fmt.Println(iapResp)
-	latestProduct := getLatestIosInAppInfo(&iapResp.Receipt.InApp)
-	if latestProduct == nil {
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] No latest App Info")
+
+	productPurchase := findIosInAppInfoWithTransactionID(&iapResp.Receipt.InApp, transactionID)
+	if productPurchase == nil {
+		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] Unable to find transaction [%s] in receipt for store [apple]", transactionID)
 		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptTransactionNotFound)
-	}
-
-	transactionID := latestProduct.TransactionID
-
-	transactionExists, transactionExistsErr := checkIfPurchaseExists(accountID, latestProduct)
-	if transactionExistsErr != nil {
-		utils.LogFormat(contextLogger, "[IAPPROCESSRECEIPT] transactionExistsErr")
-		return apirequests.EchoSetClientError(c, apierrors.ErrorIAPReceiptTransactionNotFound)
-	}
-
-	if transactionExists {
-		return nil
 	}
 
 	contextLogger = contextLogger.WithFields(log.Fields{
-		"IsTrialPeriod": latestProduct.IsTrialPeriod,
-		"ExpiresDateMS": latestProduct.ExpiresDateMS,
+		"IsTrialPeriod": productPurchase.IsTrialPeriod,
+		"ExpiresDateMS": productPurchase.ExpiresDateMS,
 	})
 
 	var transactionCode services_v2.TransactionCode
 	transactionCode.Store = "apple"
 	transactionCode.ID = transactionID
 
-	storeProductID := latestProduct.ProductID
+	storeProductID := productPurchase.ProductID
 
 	storeProducts, err := global.TransactionServiceV2.ValidateTransaction(accountID, storeProductID, transactionCode)
 
@@ -287,13 +283,13 @@ func ProcessReceiptIos(c echo.Context) error {
 		return utils.HandleInternalError(c, err)
 	}
 
-	expireDateMS, err := strconv.Atoi(latestProduct.ExpiresDateMS)
+	expireDateMS, err := strconv.Atoi(productPurchase.ExpiresDateMS)
 
 	if err != nil {
 		return utils.HandleInternalError(c, err)
 	}
 
-	purchaseDateMS, err := strconv.Atoi(latestProduct.PurchaseDateMS)
+	purchaseDateMS, err := strconv.Atoi(productPurchase.PurchaseDateMS)
 
 	if err != nil {
 		return utils.HandleInternalError(c, err)
