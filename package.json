@@ -12,7 +12,11 @@
     "build": "go build -o ./bin/main ./cmd/app/main.go",
     "docker-build": "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/main ./cmd/app/main.go && docker-compose build",
     "docker-compose-up": "yarn docker-build && docker-compose up",
-    "run:dev": "godotenv go run ./cmd/app/main.go"
+    "run:dev": "godotenv go run ./cmd/app/main.go",
+    "ci:build": "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/main ./cmd/app/main.go",
+    "ci:docker-build": "docker build -t ${ECR_REPO_NAME} . --network host",
+    "ci:docker-push": "docker push ${ECR_REPO_HOST}/${ECR_REPO_NAME}",
+    "ci:deploy-argocd": "./argocd app set ${ARGOCD_APP_NAME} --grpc-web -p image.tag=${APP_GIT_REV}"
   },
   "repository": {
     "type": "git",
