@@ -58,7 +58,6 @@ func SetupRouter() *echo.Echo {
 
 	v2iap.Use(authMiddleware)
 	v2iap.POST("/ios", apiControllerV2.ProcessReceiptIos)
-	v2iap.POST("/ios/receiptonly", apiControllerV2.ProcessReceiptOnlyIos)
 	v2iap.POST("/android", apiControllerV2.ProcessReceiptAndroid)
 
 	return e
