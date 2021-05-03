@@ -17,7 +17,7 @@ require (
 	bitbucket.org/calmisland/go-server-product v1.16.3
 	bitbucket.org/calmisland/go-server-queues v1.0.2 // indirect
 	bitbucket.org/calmisland/go-server-reference-data v1.2.1 // indirect
-	bitbucket.org/calmisland/go-server-requests v1.21.0
+	bitbucket.org/calmisland/go-server-requests v1.22.0
 	bitbucket.org/calmisland/go-server-utils v1.9.2
 	bitbucket.org/calmisland/go-slack v0.2.2 // indirect
 	cloud.google.com/go v0.78.0 // indirect

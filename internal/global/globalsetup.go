@@ -1,7 +1,6 @@
 package global
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -61,15 +60,9 @@ func Setup() {
 }
 
 func setupSentry() {
-	var env string = fmt.Sprintf("%s", os.Getenv("SERVER_STAGE"))
-
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:         "https://f8d1fc600ed24b4581f7d2d5ea37aecb@o412774.ingest.sentry.io/5413073",
-		Environment: env,
-	}); err != nil {
+	if err := sentry.Init(sentry.ClientOptions{}); err != nil {
 		fmt.Printf("Sentry initialization failed: %v\n", err)
 	}
-
 }
 
 // SetupSlackMessageService setup Slack channel
@@ -172,15 +165,11 @@ func setupServices(accountDatabase accountdatabase.Database, productDatabase pro
 }
 
 func setupAccessTokenSystems() {
-	var err error
 	var validatorConfig accesstokens.ValidatorConfig
-
-	bPublicKey := configs.LoadBinary("account.pub")
-	if bPublicKey == nil {
-		panic(errors.New("the account.pub file is mandatory"))
+	err := configs.ReadEnvConfig(&validatorConfig)
+	if err != nil {
+		panic(err)
 	}
-
-	validatorConfig.PublicKey = string(bPublicKey)
 
 	AccessTokenValidator, err = accesstokens.NewValidator(validatorConfig)
 	if err != nil {
