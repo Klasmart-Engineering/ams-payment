@@ -1,4 +1,0 @@
-{
-    "region": "ap-northeast-2",
-    "funcName": "arn:aws:lambda:ap-northeast-2:494634321140:function:braintree_sandbox_payments"
-}

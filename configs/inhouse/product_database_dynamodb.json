@@ -1,4 +1,0 @@
-{
-    "region": "us-east-1",
-    "endpoint": "http://dynamodb-local:8000"
-}

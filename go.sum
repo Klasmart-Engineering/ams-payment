@@ -55,8 +55,6 @@ bitbucket.org/calmisland/go-server-utils v1.8.0/go.mod h1:5icb47nXPo2GH++D+2DSYn
 bitbucket.org/calmisland/go-server-utils v1.9.2 h1:f6Pt1rwC25wQ3V1wkpx2JNtf7DTYs/xqw+FgI4JB+yI=
 bitbucket.org/calmisland/go-server-utils v1.9.2/go.mod h1:8WMeRtXNqNnQipUhQQvaQYux90/ELwL4OmuyrvABS/0=
 bitbucket.org/calmisland/go-slack v0.2.1/go.mod h1:3XswLvtaaTFyIwLQ7Cow4DCLgegWXml2YJwoco9R0g8=
-bitbucket.org/calmisland/go-slack v0.2.2 h1:T9UVyCRja47yGZuzmgdBfBfBNII3fYSoYXxHqCsTbqU=
-bitbucket.org/calmisland/go-slack v0.2.2/go.mod h1:3XswLvtaaTFyIwLQ7Cow4DCLgegWXml2YJwoco9R0g8=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=

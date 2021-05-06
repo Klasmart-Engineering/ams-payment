@@ -19,7 +19,6 @@ require (
 	bitbucket.org/calmisland/go-server-reference-data v1.2.1 // indirect
 	bitbucket.org/calmisland/go-server-requests v1.22.0
 	bitbucket.org/calmisland/go-server-utils v1.9.2
-	bitbucket.org/calmisland/go-slack v0.2.2 // indirect
 	cloud.google.com/go v0.78.0 // indirect
 	github.com/Jeffail/gabs/v2 v2.6.0
 	github.com/awa/go-iap v1.3.7

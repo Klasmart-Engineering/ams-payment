@@ -14,8 +14,6 @@ import (
 	"bitbucket.org/calmisland/go-server-configs/configs"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator/appleappstorereceipts"
 	"bitbucket.org/calmisland/go-server-iap/receiptvalidator/googleplaystorereceipts"
-	"bitbucket.org/calmisland/go-server-logs/errorreporter"
-	"bitbucket.org/calmisland/go-server-logs/errorreporter/slackreporter"
 	"bitbucket.org/calmisland/go-server-messages/sendmessagequeue"
 	"bitbucket.org/calmisland/go-server-product/passaccessservice"
 	"bitbucket.org/calmisland/go-server-product/passservice"
@@ -40,8 +38,8 @@ func Setup() {
 	log.SetOutput(os.Stdout)
 
 	iap.GetService().Initialize()
+
 	setupSentry()
-	setupSlackReporter()
 	SetupSlackMessageService()
 
 	accountDatabase := setupAccountDatabase()
@@ -213,26 +211,6 @@ func setupAppleStoreReceiptValidator() {
 	} else {
 		AppleAppStoreReceiptValidator = nil
 	}
-}
-
-func setupSlackReporter() {
-	var slackReporterConfig slackreporter.Config
-	err := configs.ReadEnvConfig(&slackReporterConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	// Check if there is a configuration for the Slack error reporter
-	if len(slackReporterConfig.HookURL) == 0 {
-		return
-	}
-
-	reporter, err := slackreporter.New(&slackReporterConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	errorreporter.Active = reporter
 }
 
 func setupBraintreePaymentLambda() {
