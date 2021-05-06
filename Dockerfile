@@ -6,7 +6,7 @@ WORKDIR /usr/src/app
 
 # Copy the app
 COPY bin/main .
-COPY configs configs
+# COPY configs configs
 
 # Add missing certificates
 RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
