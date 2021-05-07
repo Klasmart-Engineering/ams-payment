@@ -14,6 +14,7 @@ import (
 	"bitbucket.org/calmisland/go-server-requests/tokens/accesstokens"
 	services "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1"
 	services_v2 "bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v2/iap"
+	"github.com/awa/go-iap/playstore"
 	"github.com/calmisland/go-errors"
 )
 
@@ -38,9 +39,11 @@ var (
 	ProductService *productservice.StandardProductService
 	// StoreProductService allows use of the store database
 	StoreProductService *storeproductservice.StandardStoreProductService
-	// GooglePlayReceiptValidator is the googleplay receipt validator
+	// GooglePlayStoreClient is the googleplay client for receipt validation
+	GooglePlayStoreClient *playstore.Client
+	// GooglePlayReceiptValidator is the googleplay receipt validator for v1 apis
 	GooglePlayReceiptValidator receiptvalidator.Validator
-	// AppleAppStoreReceiptValidator is the apple store receipt validator
+	// AppleAppStoreReceiptValidator is the apple store receipt validator for v1 apis
 	AppleAppStoreReceiptValidator receiptvalidator.Validator
 	// BraintreePaymentFunction is the lambda function that provides the Node.js braintree payment gateway
 	BraintreePaymentFunction cloudfunctions.Function

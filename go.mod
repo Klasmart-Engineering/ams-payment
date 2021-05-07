@@ -9,7 +9,7 @@ require (
 	bitbucket.org/calmisland/go-server-aws v1.14.6
 	bitbucket.org/calmisland/go-server-cloud v0.4.0
 	bitbucket.org/calmisland/go-server-configs v1.1.4
-	bitbucket.org/calmisland/go-server-iap v0.3.5
+	bitbucket.org/calmisland/go-server-iap v0.3.7
 	bitbucket.org/calmisland/go-server-iap-platform v1.0.1
 	bitbucket.org/calmisland/go-server-info v1.1.0
 	bitbucket.org/calmisland/go-server-logs v1.2.2

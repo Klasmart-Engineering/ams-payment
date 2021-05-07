@@ -1,14 +1,13 @@
 package v2
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"net/http"
-	"os"
 
 	"bitbucket.org/calmisland/go-server-requests/apierrors"
 	"bitbucket.org/calmisland/go-server-requests/apirequests"
 	"bitbucket.org/calmisland/go-server-utils/textutils"
+	"bitbucket.org/calmisland/payment-lambda-funcs/internal/global"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/helpers"
 	"bitbucket.org/calmisland/payment-lambda-funcs/internal/services/v1/iap"
 	"github.com/awa/go-iap/playstore"
@@ -61,19 +60,7 @@ func DebugReceiptAndroidProduct(c echo.Context) error {
 		return helpers.HandleInternalError(c, err)
 	}
 
-	jsonKeyBase64 := os.Getenv("GOOGLE_PLAYSTORE_JSON_KEY")
-	jsonKeyStr, err := base64.StdEncoding.DecodeString(jsonKeyBase64)
-	if err != nil {
-		return helpers.HandleInternalError(c, err)
-	}
-	jsonKey := []byte(jsonKeyStr)
-
-	client, err := playstore.New(jsonKey)
-	if err != nil {
-		return helpers.HandleInternalError(c, err)
-	}
-
-	ProductInfo, err := client.VerifyProduct(c.Request().Context(), objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
+	ProductInfo, err := global.GooglePlayStoreClient.VerifyProduct(c.Request().Context(), objReceipt.PackageName, objReceipt.ProductID, objReceipt.PurchaseToken)
 
 	if err != nil {
 		return helpers.HandleInternalError(c, err)

@@ -1,9 +1,11 @@
 package global
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 
+	"github.com/awa/go-iap/playstore"
 	log "github.com/sirupsen/logrus"
 
 	"bitbucket.org/calmisland/go-server-account/accountdatabase"
@@ -49,6 +51,7 @@ func Setup() {
 	setupPaypalPaymentLambda()
 
 	setupAccessTokenSystems()
+	setupGooglePlayClient()
 	setupGooglePlayReceiptValidator()
 	setupAppleStoreReceiptValidator()
 
@@ -175,41 +178,40 @@ func setupAccessTokenSystems() {
 	}
 }
 
-func setupGooglePlayReceiptValidator() {
-	var googlePlayValidatorConfig googleplaystorereceipts.ReceiptValidatorConfig
-	err := configs.ReadEnvConfig(&googlePlayValidatorConfig)
+func setupGooglePlayClient() {
+	jsonKeyBase64 := os.Getenv("GOOGLE_PLAYSTORE_JSON_KEY")
+	fmt.Printf("[ENV LOADED]  %s %s\n", "GOOGLE_PLAYSTORE_JSON_KEY", jsonKeyBase64)
+
+	jsonKeyStr, err := base64.StdEncoding.DecodeString(jsonKeyBase64)
 	if err != nil {
 		panic(err)
 	}
+	jsonKey := []byte(jsonKeyStr)
 
-	googlePlayValidatorConfig.AppPublicKeys = iap.GetService().AndroidPublicKeys
-
-	if len(googlePlayValidatorConfig.JSONKey) > 0 || len(googlePlayValidatorConfig.JSONKeyFile) > 0 {
-		GooglePlayReceiptValidator, err = googleplaystorereceipts.NewReceiptValidator(googlePlayValidatorConfig)
-		if err != nil {
-			panic(err)
-		}
+	if client, err := playstore.New(jsonKey); err != nil {
+		panic(err)
 	} else {
-		GooglePlayReceiptValidator = nil
-		panic("Failed to generate Google Play Receipt validator")
+		GooglePlayStoreClient = client
 	}
 
 }
 
-func setupAppleStoreReceiptValidator() {
-	var appleStoreValidatorConfig appleappstorereceipts.ReceiptValidatorConfig
-	err := configs.ReadEnvConfig(&appleStoreValidatorConfig)
+func setupGooglePlayReceiptValidator() {
+	appPublicKeys := iap.GetService().AndroidPublicKeys
+	googlePlayReceiptValidator, err := googleplaystorereceipts.NewReceiptValidator(GooglePlayStoreClient, appPublicKeys)
+
 	if err != nil {
 		panic(err)
 	}
 
-	if len(appleStoreValidatorConfig.Password) > 0 {
-		AppleAppStoreReceiptValidator, err = appleappstorereceipts.NewReceiptValidator(appleStoreValidatorConfig)
-		if err != nil {
-			panic(err)
-		}
+	GooglePlayReceiptValidator = googlePlayReceiptValidator
+}
+
+func setupAppleStoreReceiptValidator() {
+	if appleAppStoreReceiptValidator, err := appleappstorereceipts.NewReceiptValidator(); err != nil {
+		panic(err)
 	} else {
-		AppleAppStoreReceiptValidator = nil
+		AppleAppStoreReceiptValidator = appleAppStoreReceiptValidator
 	}
 }
 
