@@ -1,0 +1,100 @@
+name: AMS payment pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - qa
+      - prod
+
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: act10ns/slack@v1
+      with:
+        status: starting
+      if: always()
+
+    - run: git config --global url.'ssh://git@bitbucket.org'.insteadOf 'https://bitbucket.org'
+
+    - name: Install SSH key of target
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY_BITBUCKET }}
+        name: id_rsa-target
+        known_hosts: |
+          # bitbucket.org:22 SSH-2.0-conker_19579114d7 f576a54372a7
+          |1|QIeAR547JlqFgTljR5DzRHaYNmc=|8YEyFHJ56wx/ItrXpBUvN4jikR0= ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAubiN81eDcafrgMeLzaFPsw2kNvEcqTKl/VqLat/MaB33pZy0y3rJZtnqwR2qOOvbwKZYKiEO1O6VqNEBxKvJJelCq0dTXWT5pbO2gDXC6h6QDXCaHo6pOHGPUy+YBaGQRGuSusMEASYiWunYN0vCAI8QaXnWMXNMdFP3jHAJH0eDsoiGnLPBlBp4TNm6rYI74nMzgz3B9IikW4WVK+dc8KZJZWYjAuORU3jc1c/NPskD2ASinf8v3xnfXeukU0sJ5N6m5E8VLjObPEO+mN2t/FZTMZLiFqPWc/ALSqnMnnhwrNi2rbfg/rd/IpL8Le3pSBne8+seeFVBoGqzHM9yXw==
+          # bitbucket.org:22 SSH-2.0-conker_19579114d7 a2cb736ee15c
+          # bitbucket.org:22 SSH-2.0-conker_19579114d7 c36592ed94a7
+          # bitbucket.org:22 SSH-2.0-conker_19579114d7 730bb660536a
+          # bitbucket.org:22 SSH-2.0-conker_19579114d7 6f80aebbccea
+        config: |                                         # will be appended to existing .ssh/config
+          Host bitbucket.org
+            HostName bitbucket.org
+            User git
+            IdentityFile ~/.ssh/id_rsa-target
+
+    - name: Setup Golang Environment
+      uses: actions/setup-go@v2
+      with:
+        go-version: '^1.17.2'
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Get short GIT SHA
+      uses: benjlevesque/short-sha@v1.1
+      id: short-sha
+
+    # - run: go get ...
+
+    - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./bin/main ./cmd/app/main.go
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-and-push-docker-image-to-ecr
+      env:
+        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ steps.short-sha.outputs.sha }}
+      run: |
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: Deploy 
+      id: deploy-with-argocd
+      run: |
+        curl -sSL -o ./argocd "https://$ARGOCD_SERVER/download/argocd-linux-amd64"
+        chmod 755 ./argocd
+        ./argocd app set ams-payment-$GITHUB_REF_NAME --grpc-web -p image.tag=$IMAGE_TAG
+
+      env:
+        ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+        ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        IMAGE_TAG: ${{ steps.short-sha.outputs.sha }}
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        steps: ${{ toJson(steps) }}
+      if: always()
