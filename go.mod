@@ -2,6 +2,8 @@ module bitbucket.org/calmisland/payment-lambda-funcs
 
 go 1.15
 
+// replace bitbucket.org/calmisland/go-server-iap => /Volumes/sapsaldog-nvme/calmisland/ams/go-server-iap
+
 require (
 	bitbucket.org/calmisland/go-server-account v1.14.14
 	bitbucket.org/calmisland/go-server-api v0.2.3
@@ -29,11 +31,12 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/getsentry/sentry-go v0.10.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/labstack/echo/v4 v4.2.0
 	github.com/magefile/mage v1.11.0 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/multiplay/go-slack v0.0.0-20200412115802-09e9e2b93fe2
+	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.0
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
